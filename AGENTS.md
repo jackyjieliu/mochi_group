@@ -9,7 +9,7 @@
 - `gas/Code.gs`：Google Apps Script 後端，處理 Sheet 讀寫、權限、地圖短網址、Google 日曆同步、歸檔與操作紀錄。
 - `gas/README.md`：GAS 表格欄位、安裝、部署、日曆與歸檔說明。
 
-Google Sheet 內有三張工作表：`Events`（目前顯示中的活動）、`EventsArchive`（已退場活動，平常不讀取）、`AuditLog`（永久操作紀錄）。
+Google Sheet 內有四張工作表：`Events`（目前顯示中的活動）、`EventsArchive`（已退場活動，平常不讀取）、`AuditLog`（永久操作紀錄）、`Members`（打卡名單）。
 
 ## 資料與隱私邊界
 
@@ -46,7 +46,7 @@ Google Sheet 內有三張工作表：`Events`（目前顯示中的活動）、`E
 
 ## Google Sheet 與 GAS 規則
 
-- `setupProject()` 負責新增／修復 `Events`、`EventsArchive` 與 `AuditLog` 表格及欄位，並註冊每日歸檔觸發器。只在 schema 改變或尚未初始化時要求使用者執行。
+- `setupProject()` 負責新增／修復 `Events`、`EventsArchive`、`AuditLog` 與 `Members` 表格及欄位，並註冊每日歸檔觸發器。只在 schema 改變或尚未初始化時要求使用者執行。
 - `onOpen()` 在電腦版 Google Sheet 頂部建立「活動布告欄」自訂選單，不是底部工作表分頁。手機版 Sheets 可能不顯示自訂選單。選單中結尾為底線的私有函式不會出現在編輯器的執行下拉選單，要驗證程式碼版本請直接搜尋原始碼字串。
 - `setAdminPassword()` 只保存加鹽 SHA-256 雜湊到 Script Properties，密碼不得出現在 Sheet 或程式碼。
 - 寫入操作必須保留 Script Lock 與 `mutationId` 幂等檢查，避免手機與電腦同時操作重複寫入。
@@ -66,12 +66,18 @@ Google Sheet 內有三張工作表：`Events`（目前顯示中的活動）、`E
 | 移除成員 | ✓ | ✓ | ✗ | ✗ |
 | 活動留言 | ✓ | ✓ | ✓ | ✓ |
 | 開啟／取消加強推廣 | ✓ | ✓ | ✓ | ✗ |
+| 自己打卡 | ✓ | ✓ | ✓ | ✓（任何已登入成員） |
+| 取消自己的打卡 | ✓ | ✓ | ✓ | ✓（任何已登入成員） |
+| 取消他人打卡 | ✗ | ✓ | ✗ | ✗ |
+| 移除打卡名單成員 | ✗ | ✓ | ✗ | ✗ |
+| 重置全部人打卡 | ✗ | ✓ | ✓ 僅管理員 | ✗ |
 
 - 已報名成員可共同維護活動細節，這是刻意開放的。GAS 用 `assertEditPermission_()`（含 `isEventAttendee_()`）驗證。
 - **交棒必須用 `assertHandoffPermission_()`，不可沿用 `assertEditPermission_()`** —— 否則任何報名者都能把自己設成主揪。前端也要同步用 `canCurrentUserHandoffHost()` 鎖住主揪下拉選單。
 - 留言不限已報名者，任何已登入成員都可以留言。
 - 管理員入口隱藏在頁首版本號上：點擊 `.version-label` 開啟／退出管理員模式，仍必須輸入密碼。不得改回顯眼的「管理員模式」按鈕。
 - 管理員密碼只能在 `saveEvent`、`deleteEvent`、`toggleHighlight` 等需要權限的請求中透過 HTTPS 傳給 GAS，不得寫進 localStorage、活動紀錄或 AuditLog。重新載入後要自動退出管理員模式。
+- 打卡名單的三個管理動作用 `assertAdminPermission_(payload)` —— 這是全檔唯一的「純管理員」assert，不放行主揪也不放行報名者，不可與 `assertDeletePermission_` 混用。前端把按鈕藏起來不算權限，`/exec` 是公開端點。
 - 權限變更必須同時修改前端的按鈕顯示／送出 payload，以及 GAS 的 `assert...Permission_` 驗證；只修改一邊不算完成。
 - 主揪不可直接退出自己的活動；必須先在編輯頁把主揪交棒給另一位已報名成員。
 - 交棒候選人必須來自已報名名單，不得手動輸入名稱。
@@ -138,6 +144,30 @@ Google Sheet 內有三張工作表：`Events`（目前顯示中的活動）、`E
 - 視覺只套在 `.card-summary-bar`：粉紅漸層背景加 `assets/sakura-petals.svg` 雙層飄落效果，展開內容維持白底。花瓣資產使用不對稱輪廓、葉脈與柔和漸層，不要改回橢圓 radial-gradient。若活動同時是許願與加強推廣，以加強推廣的粉紅櫻花視覺為準。
 - `prefers-reduced-motion: reduce` 時停用櫻花動畫，但保留粉紅底色。
 
+### 打卡紀錄
+
+成員自助簽到的公開名冊，資料在 `Members` 工作表，入口是篩選列的「打卡」按鈕，開啟 `#modal-checkin`。
+
+三個刻意的產品決策，**不要自作主張改掉**：
+
+1. **不保留歷史。** 每人只有一個 `checkedInAt`，非空字串代表本輪已打卡。沒有月份欄、沒有出席率、沒有 CheckInLog 表。要做歷史統計是另一個功能，不是「補完」這個功能。
+2. **名單所有人都看得到**，包含每個人的打卡狀態。這是公開簽到板，不是管理員專用報表。
+3. **不做換月自動重置。** 打卡狀態會一直留著，只有管理員按「重置全部人打卡」才會清空。不要新增每月觸發器。
+
+其他不變條件：
+
+- 首次打卡自動成為名單成員（寫入 `joinedAt`），之後 `joinedAt` 不可被覆蓋；`displayName` 與 `pictureUrl` 每次打卡都更新，因為 LINE 顯示名稱會變。
+- 主按鈕是**切換**：未打卡顯示「打卡」（綠），已打卡顯示「取消打卡」（紅）。成員可以取消自己的打卡，走 `cancelCheckIn`，不需要管理員密碼。取消只清 `checkedInAt`，`joinedAt` 與名單資格都保留。
+- `cancelCheckIn_` 與 `checkIn_` 一樣**只認 `payload.actorUserId`**，不接受目標 userId。管理員取消別人的打卡是另一支 `adminUncheckMember_`，兩者不可合併。
+- `checkIn_` 只認 `payload.actorUserId`，不得接受 payload 自帶的目標 userId，否則任何人都能替別人打卡。
+- 移除成員是**整列硬刪除**。〈資料量控制〉禁止無限成長，加 `status` 欄軟刪除會讓名單永遠不縮小；移除紀錄由 `AuditLog` 承接。這與「刪除活動必須軟刪除」不衝突——那條的理由是活動要先進 `EventsArchive` 保住 history，名單沒有 history。
+- 重置全部用一次 `clearContent()` 清整欄，不可逐列 `setValue`（數百人會撞執行時間上限）。
+- 前端**不做樂觀更新**：`rollbackEventState()` 綁死 `eventsData`，要給名單用就得複製一整套快照與回滾。改成伺服器確認成功後才改本機 `membersData`，所以沒有任何回滾程式碼，也不要加。
+- `membersData` 不進 localStorage。名單不是離線必需品，每次同步整份覆蓋。
+- 前端判斷後端是否就緒用 `Array.isArray(data.members)`，**不是** `schemaVersion`。`schemaVersion` 只檢查 `Events` 的欄位，看不出 `Members` 表建了沒；升版號會給出錯誤的就緒訊號。
+- 打卡視窗底部有 `.modal-footer`，放「重置全部打卡」（僅管理員，`display` 控制）與「關閉視窗」，與活動詳情視窗同一個版型。沒有這個 footer 時整個視窗看起來像一個分頁而不是彈出視窗。
+- 打卡視窗裡的三顆篩選 pill 沿用 `.tab-btn` 樣式但**單選互斥**，與主畫面那組多選開關無關。`setupEventListeners` 綁定主畫面篩選時必須用 `.nav-filters .tab-btn` 選擇器；改回全域 `.tab-btn` 會把 modal 那三顆也綁上活動篩選邏輯，主畫面篩選當場壞掉。
+
 ### Google 日曆
 
 - 活動詳情的「加到我的日曆」由前端產生 Google Calendar 新增行程網址，只建立在使用者自己的日曆，不呼叫 GAS、不改動群組共用日曆。
@@ -149,28 +179,39 @@ Google Sheet 內有三張工作表：`Events`（目前顯示中的活動）、`E
 - 取回既有行程後必須用 `isCalendarEventLive_()` 確認它還存在。`getEventById` 對**已刪除**的行程仍會回傳物件，而對已取消的行程呼叫 `setTitle`／`setTime` 不會讓它重新出現 —— 少了這道檢查，同步會回報成功但日曆完全沒有變化。
 - `setGoogleCalendar` 必須實際試寫一筆再刪除來驗證權限。唯讀訂閱的日曆一樣讀得到名稱，只檢查 `getCalendarById` 會讓設定看似成功、之後每次同步卻靜默失敗。
 - 已過期活動的行程保留為歷史，不再修改也不隨網頁刪除而移除。
-- 前端「日曆」按鈕位於 FAB 群組最上方（日曆 → 宣傳 → 揪團），開啟嵌入式日曆與訂閱連結，關閉時要卸載 iframe。
+- 前端「日曆」按鈕位於篩選列最右（排序 → 打卡 → 宣傳 → 日曆），開啟嵌入式日曆與訂閱連結，關閉時要卸載 iframe。
 - 時間解析依賴 Apps Script 專案時區為 `Asia/Taipei`。設錯會讓所有行程整批偏移。
 
 ## 資料量控制
 
-系統中不得存在任何會無限成長的資料。以下三道機制必須同時保留：
+系統中不得存在任何會無限成長的資料。以下機制必須同時保留：
 
 - 活動列的 `history` 上限為 `APP_CONFIG.MAX_EVENT_HISTORY`（50 筆，含留言），由 `trimEventHistory_()` 強制。固定團永遠不會過期也不會被歸檔，沒有這道上限它會無限膨脹。完整紀錄保存在 `AuditLog`。
 - 許願活動未達標時整列硬刪除，是唯一不進 `EventsArchive` 的例外，見〈許願活動〉。
 - `doGet` 只回傳仍需顯示的活動，已刪除與已超過 24 小時保留期的過期活動一律不送（`isRetiredEvent_()`）。不得恢復 `includeDeleted` 參數，那會讓任何拿到 `/exec` 網址的人取得已刪除活動的成員名單。
 - 已刪除與已超過保留期的過期活動由每日觸發器 `archiveRetiredEvents()` 搬到 `EventsArchive`，並從 `Events` 移除該列。固定團與時間無法解析的活動一律不搬。
 - 搬進歸檔表前必須**依歸檔表自己的表頭重排每一列**。`ensureHeaders_` 是往右補欄位，所以兩張表的欄序不保證相同；直接照 `Events` 的順序寫入會造成欄位錯位。
+- 打卡名單 `Members` 的上限是 `APP_CONFIG.MAX_MEMBERS`（500，對齊 LINE 群組人數上限），在 `checkIn_` 內強制。這是全站唯一由未驗證輸入新增列的路徑，上限不可移除。`displayName` 同時截斷到 `MAX_MEMBER_NAME_LENGTH`（40 字）。
 
 一般活動開始 2 小時後標示為「已過期」並停止報名，但會繼續顯示 24 小時；之後才從網站隱藏並等待每日歸檔。前端使用 `EVENT_DURATION_MS`／`EXPIRED_EVENT_DISPLAY_MS`，GAS 使用 `APP_CONFIG.EVENT_DURATION_MS`／`EXPIRED_EVENT_RETENTION_MS`，兩端數值必須一致。
 
 「已過期」分頁與匯出歷史紀錄功能已刻意移除，不要重新加回。歸檔資料只在 Sheet 內查看。
 
-## 列表篩選
+## 列表篩選與排序
 
-頂部三顆按鈕（揪團中／固定團／許願團）是**獨立開關**，不是分頁：可以全開、全關，或任意組合，顯示的是所有開啟分類的聯集，狀態存在 `activeFilters` 這個 Set，預設三個全開。不要改回單選分頁。
+頂部只有一顆「排序」按鈕，點開展開 `#sort-panel`，面板裡有三組控制項：
+
+1. **活動時間**：由近到遠（預設）／由遠到近，**單選互斥**，狀態存在 `eventSortOrder`。固定團沒有日期，兩個方向都永遠釘在最上面，方向只套用在有日期的活動。
+2. **顯示分類**：揪團中／固定團／許願團，是**獨立開關**，不是分頁：可以全開、全關，或任意組合，顯示的是所有開啟分類的聯集，狀態存在 `activeFilters` 這個 Set，預設三個全開。**不要改回單選分頁**——搬進面板不改變這一點。
+3. **重新整理**：手動同步，`refreshDataFromCloud()`。
 
 分類互斥且完整涵蓋：固定團看 `isFixedGroup`、許願團看 `isWish`、揪團中是兩者皆非的一般活動。
+
+**畫面上有三組不同的 pill 共用 `.tab-btn` 樣式**：排序（`[data-event-sort]`，單選）、分類（`[data-filter]`，多選）、打卡視窗的狀態篩選（`[data-checkin-filter]`，單選）。綁定事件時**一律用 data 屬性選取，絕對不要用 `.tab-btn`**——用了就會把三組綁在一起，主畫面篩選當場壞掉。
+
+篩選列是四顆等寬按鈕（`.nav-action`，`flex: 1 1 0`）填滿整列：**排序／打卡／宣傳／日曆**。配色沿用專案既有的「淺色底 + 飽和文字」慣例（同 `.btn-edit`／`.btn-calendar`／`.btn-delete`）：排序石板灰、打卡藍、宣傳橘、日曆紫；排序展開時整顆反白成深石板色。四顆文字都必須是兩個字，變長會把整列擠壞——所以打卡在後端未就緒時只改 `disabled` 與 `title`，不改文字。
+
+**右下角浮動按鈕只留「揪團」一顆。** 曾經放到四顆，遮掉手機約四分之一的螢幕高度；次要入口一律放篩選列，不要再往 FAB 加。
 
 ## 同步、更新與快取
 
