@@ -5,6 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>LINE 群組活動布告欄</title>
   
+  <!-- ==================================================================
+       換人使用只要改這一塊的三個值，其他地方都不用動。
+       完整步驟看同資料夾的 SETUP.md。
+
+       OWNER_HOSTS 是「原作者的網站網域」，用來提醒複製這份程式的人
+       還沒把後端換成自己的。自己換自訂網域時要把新網域加進這個清單，
+       否則自己的網站會被自己的提醒擋住。
+       ================================================================== -->
+  <script>
+    window.SITE_SETUP = {
+      GAS_API_URL: "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec",
+      LIFF_ID: "2010984505-Nv6CpgYO",
+      LIFF_URL: "https://liff.line.me/2010984505-Nv6CpgYO",
+      OWNER_HOSTS: ["vainbook.github.io"]
+    };
+  </script>
+
   <!-- LINE LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
@@ -724,6 +741,58 @@
       background: #f1f5f9;
       color: #64748b;
       opacity: 1;
+    }
+
+    /* 未完成設定的指引畫面：整頁取代 App，不讓人誤寫進別人的資料。 */
+    .site-setup-notice {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .site-setup-card {
+      background: var(--line-card-bg);
+      border-radius: 16px;
+      padding: 24px 20px;
+      max-width: 520px;
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.18);
+    }
+
+    .site-setup-card h1 {
+      margin: 0 0 12px;
+      font-size: 19px;
+      color: #0f172a;
+    }
+
+    .site-setup-card p {
+      margin: 0 0 12px;
+      font-size: 14px;
+      line-height: 1.75;
+      color: #334155;
+    }
+
+    .site-setup-steps {
+      background: #f8fafc;
+      border: 1px solid var(--line-border);
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .site-setup-card code {
+      background: #eef2ff;
+      color: #3730a3;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 13px;
+      word-break: break-all;
+    }
+
+    .site-setup-foot {
+      margin: 0;
+      font-size: 12px;
+      color: var(--line-text-sub);
     }
 
     .fab-group {
@@ -1709,7 +1778,7 @@
       <div class="header-top">
         <h1 class="brand-title">
           <span>群組活動布告欄</span>
-          <time id="app-version-badge" class="version-label" datetime="2026-09-08T15:46:36+08:00">v260908.1546</time>
+          <time id="app-version-badge" class="version-label" datetime="2026-09-08T16:01:53+08:00">v260908.1601</time>
         </h1>
         <span id="login-badge" class="sync-status-badge">同步中...</span>
       </div>
@@ -2192,11 +2261,18 @@
        ========================================================================== */
 
     // --- 1. CONFIG & STATE ---
+    // 站台設定放在檔案最上方的 SITE_SETUP，換人使用只改那裡。
+    // 這裡的預設值是後備：萬一那個區塊被刪掉，程式不會整個壞掉。
+    const SITE_SETUP = window.SITE_SETUP || {};
+    // 判斷「有沒有換過後端」的基準值。改後端時這一行要跟著 SITE_SETUP 一起換。
+    const DEFAULT_OWNER_GAS_URL =
+      "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec";
+
     const CONFIG = {
-      APP_VERSION: "v260908.1546", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
-      LIFF_ID: "2010984505-Nv6CpgYO",
-      LIFF_URL: "https://liff.line.me/2010984505-Nv6CpgYO",
-      GAS_API_URL: "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec",
+      APP_VERSION: "v260908.1601", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
+      LIFF_ID: SITE_SETUP.LIFF_ID || "",
+      LIFF_URL: SITE_SETUP.LIFF_URL || "",
+      GAS_API_URL: SITE_SETUP.GAS_API_URL || "",
       VERSION_MANIFEST_URL: "version.json",
       // GAS 變慢的真正原因是併發請求排隊，不是單次請求慢。
       // 實測（2026-08-12）：6 個請求同時打進去，每個腳本內部只跑 1.2～2.1 秒，
@@ -2602,8 +2678,49 @@
     }
 
     // --- 2. INITIALIZATION ---
+    /**
+     * 複製這份程式的人如果忘了換後端，他的網站會直接寫進原作者的試算表。
+     * 兩個條件同時成立才判定「還沒設定」：不在原作者的網域，而且 GAS 網址還是原作者的。
+     * 這是防意外不是防惡意——/exec 本來就是匿名端點，擋不住刻意改程式的人。
+     */
+    function needsSiteSetup() {
+      if (isDevMode) return false;
+      const ownerHosts = Array.isArray(SITE_SETUP.OWNER_HOSTS) ? SITE_SETUP.OWNER_HOSTS : [];
+      if (ownerHosts.includes(location.hostname)) return false;
+      if (!CONFIG.GAS_API_URL) return true;
+      return ownerHosts.length > 0 && CONFIG.GAS_API_URL === DEFAULT_OWNER_GAS_URL;
+    }
+
+    function showSiteSetupNotice() {
+      const box = document.createElement("div");
+      box.className = "site-setup-notice";
+      box.innerHTML = `
+        <div class="site-setup-card">
+          <h1>這個網頁還沒設定完成</h1>
+          <p>
+            你正在看的是從別人的專案複製來的版本，目前還連著原作者的後端。
+            先完成設定再使用，否則你的活動與打卡資料會寫進別人的試算表。
+          </p>
+          <p class="site-setup-steps">
+            開啟 <code>index.html</code>，把檔案<strong>最上面</strong> <code>SITE_SETUP</code>
+            區塊的三個值換成你自己的：<br>
+            <code>GAS_API_URL</code>、<code>LIFF_ID</code>、<code>LIFF_URL</code><br>
+            再把 <code>OWNER_HOSTS</code> 換成你自己的網站網域。
+          </p>
+          <p class="site-setup-foot">完整步驟見專案裡的 SETUP.md。</p>
+        </div>`;
+      document.body.replaceChildren(box);
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       isDevMode = checkDevModeVisibility();
+
+      // 尚未設定就整頁換成指引，不初始化、不連線、不寫入任何資料。
+      if (needsSiteSetup()) {
+        showSiteSetupNotice();
+        return;
+      }
+
       updateVersionBadgeUI();
       
       loadLocalData();

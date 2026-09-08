@@ -18,6 +18,17 @@ Google Sheet 內有四張工作表：`Events`（目前顯示中的活動）、`E
 - LINE 顯示名稱可變更，不得當成權限依據。普通主揪權限使用 LINE `userId`；管理員模式由 GAS 驗證密碼。
 - 診斷線上 GAS 時，只輸出 `status`、`schemaVersion`、功能旗標或錯誤訊息，不得顯示整包活動與成員資料。
 
+## 站台設定與 fork 防呆
+
+換人使用要改的東西全部集中在 `index.html` **最上方**的 `window.SITE_SETUP`（`GAS_API_URL`、`LIFF_ID`、`LIFF_URL`、`OWNER_HOSTS`）。`CONFIG` 只是讀它，不要把這些值改回寫死在 `CONFIG` 裡——那會讓接手的人要在五千行裡找。
+
+`needsSiteSetup()` 在 `DOMContentLoaded` 最前面判斷：**不在 `OWNER_HOSTS` 的網域、而且 `GAS_API_URL` 仍等於 `DEFAULT_OWNER_GAS_URL`**，兩者同時成立就整頁換成設定指引，不初始化也不連線。這是為了防止複製這份程式的人忘了換後端，把測試資料寫進原作者的正式試算表。
+
+- 本機 `?dev=true` 一律放行。
+- **改後端網址時，`SITE_SETUP.GAS_API_URL` 與 `DEFAULT_OWNER_GAS_URL` 要一起換**，否則自己的站會被自己的防呆擋住。
+- **改用自訂網域時，要把新網域加進 `OWNER_HOSTS`**，同上。
+- 這是防意外不是防惡意：`/exec` 是匿名端點，擋不住刻意改前端的人。不要因此以為後端有保護。
+
 ## 雙重部署架構
 
 本專案有兩個彼此獨立的發布目標，不可把「GitHub 已更新」視為「GAS 已更新」。
