@@ -845,8 +845,11 @@
 
     #btn-submit-checkin:disabled {
       background: #e2e8f0;
-      color: #94a3b8;
-      cursor: not-allowed;
+      /* 「已登記」是要讀的狀態文字，不是被停用的動作。
+         .line-btn:disabled 的 opacity 疊上灰字會糊掉，這裡蓋回實色。 */
+      color: #475569;
+      opacity: 1;
+      cursor: default;
     }
 
     .checkin-summary {
@@ -951,6 +954,22 @@
     .checkin-badge.pending {
       background: #f1f5f9;
       color: #64748b;
+    }
+
+    .checkin-tick {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      margin: 0 2px 0 0;
+      accent-color: var(--line-green);
+      cursor: pointer;
+    }
+
+    .checkin-mention {
+      margin-left: auto;
+      min-height: 30px;
+      padding: 4px 10px;
+      font-size: 12px;
     }
 
     .checkin-row-action {
@@ -1690,7 +1709,7 @@
       <div class="header-top">
         <h1 class="brand-title">
           <span>群組活動布告欄</span>
-          <time id="app-version-badge" class="version-label" datetime="2026-09-06T20:22:58+08:00">v260906.2022</time>
+          <time id="app-version-badge" class="version-label" datetime="2026-09-08T15:46:36+08:00">v260908.1546</time>
         </h1>
         <span id="login-badge" class="sync-status-badge">同步中...</span>
       </div>
@@ -1770,7 +1789,7 @@
             <div id="checkin-self-name" class="checkin-self-name">未登入成員</div>
             <div id="checkin-self-status" class="checkin-self-status">尚未打卡</div>
           </div>
-          <button id="btn-submit-checkin" class="line-btn btn-join" type="button">打卡</button>
+          <button id="btn-submit-checkin" class="line-btn btn-join" type="button">登記打卡</button>
         </div>
 
         <div id="checkin-summary" class="checkin-summary">名單載入中</div>
@@ -1780,15 +1799,14 @@
           <select id="checkin-sort" class="line-input" aria-label="名單排序方式">
             <option value="name-asc">名稱 A→Z</option>
             <option value="name-desc">名稱 Z→A</option>
-            <option value="pending-first">未打卡優先</option>
-            <option value="done-first">已打卡優先</option>
           </select>
         </div>
 
         <div class="checkin-filters">
           <button type="button" class="tab-btn active" data-checkin-filter="all" aria-pressed="true">全部</button>
-          <button type="button" class="tab-btn" data-checkin-filter="done" aria-pressed="false">已打卡</button>
+          <button type="button" class="tab-btn" data-checkin-filter="done" aria-pressed="false">打卡成功</button>
           <button type="button" class="tab-btn" data-checkin-filter="pending" aria-pressed="false">未打卡</button>
+          <button id="btn-mention-members" class="line-btn btn-calendar checkin-mention" type="button">@ 標記</button>
         </div>
 
         <div id="checkin-list" class="checkin-list"></div>
@@ -2175,7 +2193,7 @@
 
     // --- 1. CONFIG & STATE ---
     const CONFIG = {
-      APP_VERSION: "v260906.2022", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
+      APP_VERSION: "v260908.1546", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
       LIFF_ID: "2010984505-Nv6CpgYO",
       LIFF_URL: "https://liff.line.me/2010984505-Nv6CpgYO",
       GAS_API_URL: "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec",
@@ -3799,14 +3817,12 @@
       nameEl.innerText = displayName;
 
       if (!currentUser) {
-        statusEl.innerText = "請先登入 LINE 才能打卡";
-        buttonEl.innerText = "打卡";
+        statusEl.innerText = "請先登入 LINE 才能登記";
+        buttonEl.innerText = "登記打卡";
         buttonEl.disabled = false;
         return;
       }
 
-      const myRecord = getMyMemberRecord();
-      const checkedIn = isMemberCheckedIn(myRecord);
       if (checkinRequestInFlight) {
         statusEl.innerText = "正在送出...";
         buttonEl.innerText = "處理中";
@@ -3814,19 +3830,22 @@
         return;
       }
 
-      if (checkedIn) {
+      // 兩層：使用者只能登記（第一層），打卡成功由管理員勾選（第二層）。
+      const myRecord = getMyMemberRecord();
+      if (!myRecord) {
+        statusEl.innerText = "尚未登記，按一下加入名單";
+        buttonEl.innerText = "登記打卡";
+        buttonEl.disabled = false;
+        return;
+      }
+
+      buttonEl.innerText = "已登記";
+      buttonEl.disabled = true;
+      if (isMemberCheckedIn(myRecord)) {
         const timeText = formatCheckinTime(myRecord.checkedInAt);
-        statusEl.innerText = timeText ? `已打卡 ${timeText}` : "已打卡";
-        buttonEl.innerText = "取消打卡";
-        buttonEl.classList.remove("btn-join");
-        buttonEl.classList.add("btn-cancel");
-        buttonEl.disabled = false;
+        statusEl.innerText = timeText ? `打卡成功 ${timeText}` : "打卡成功";
       } else {
-        statusEl.innerText = myRecord ? "本輪尚未打卡" : "尚未加入名單，打卡後自動加入";
-        buttonEl.innerText = "打卡";
-        buttonEl.classList.remove("btn-cancel");
-        buttonEl.classList.add("btn-join");
-        buttonEl.disabled = false;
+        statusEl.innerText = "已登記，等待管理員確認";
       }
     }
 
@@ -3840,18 +3859,10 @@
         return true;
       });
 
+      // 排序只管名稱；有沒有打卡成功是上面那排 pill 的事，兩者不混在一起。
       const byName = (a, b) => String(a.displayName || "")
         .localeCompare(String(b.displayName || ""), "zh-Hant");
-
-      return filtered.sort((a, b) => {
-        if (checkinSort === "name-desc") return byName(b, a);
-        if (checkinSort === "pending-first" || checkinSort === "done-first") {
-          const aDone = isMemberCheckedIn(a) ? 1 : 0;
-          const bDone = isMemberCheckedIn(b) ? 1 : 0;
-          if (aDone !== bDone) return checkinSort === "pending-first" ? aDone - bDone : bDone - aDone;
-        }
-        return byName(a, b);
-      });
+      return filtered.sort((a, b) => checkinSort === "name-desc" ? byName(b, a) : byName(a, b));
     }
 
     function renderCheckinList() {
@@ -3868,8 +3879,8 @@
       const total = membersData.length;
       const doneCount = membersData.filter(isMemberCheckedIn).length;
       summaryEl.innerText = total === 0
-        ? (membersSupported ? "名單還是空的，第一個打卡的人會自動加入" : "雲端尚未取得名單")
-        : `已打卡 ${doneCount} / 共 ${total} 人`;
+        ? (membersSupported ? "名單還是空的，第一個登記的人會自動加入" : "雲端尚未取得名單")
+        : `打卡成功 ${doneCount} / 已登記 ${total} 人`;
 
       const visible = getVisibleMembers();
       listEl.replaceChildren();
@@ -3877,7 +3888,7 @@
       if (visible.length === 0) {
         const empty = document.createElement("div");
         empty.className = "checkin-empty";
-        empty.innerText = total === 0 ? "還沒有人打卡" : "找不到符合條件的成員";
+        empty.innerText = total === 0 ? "還沒有人登記" : "找不到符合條件的成員";
         listEl.append(empty);
         return;
       }
@@ -3890,6 +3901,18 @@
         const row = document.createElement("div");
         row.className = "checkin-row" + (myUserId && String(member.userId) === myUserId ? " is-self" : "");
 
+        // 管理員模式下改用勾選框標記打卡成功；一般成員只看得到狀態徽章。
+        if (currentUserCanDeleteAnyEvent) {
+          const box = document.createElement("input");
+          box.type = "checkbox";
+          box.className = "checkin-tick";
+          box.checked = checkedIn;
+          box.title = "勾選代表打卡成功";
+          box.setAttribute("aria-label", `${displayName} 打卡成功`);
+          box.onchange = () => adminSetCheckIn(member.userId, displayName, box.checked, box);
+          row.append(box);
+        }
+
         const avatar = document.createElement("img");
         avatar.src = getSafeImageUrl(member.pictureUrl, displayName);
         avatar.alt = `${displayName}的頭像`;
@@ -3901,7 +3924,7 @@
 
         const badge = document.createElement("span");
         badge.className = "checkin-badge " + (checkedIn ? "done" : "pending");
-        badge.textContent = checkedIn ? "已打卡" : "未打卡";
+        badge.textContent = checkedIn ? "打卡成功" : "未打卡";
         if (checkedIn) {
           const timeText = formatCheckinTime(member.checkedInAt);
           if (timeText) badge.title = `打卡時間 ${timeText}`;
@@ -3909,16 +3932,7 @@
 
         row.append(avatar, name, badge);
 
-        // 管理員按鈕只是介面便利，真正的權限在 GAS 的 assertAdminPermission_。
         if (currentUserCanDeleteAnyEvent) {
-          if (checkedIn) {
-            const uncheckBtn = document.createElement("button");
-            uncheckBtn.type = "button";
-            uncheckBtn.className = "line-btn btn-detail checkin-row-action";
-            uncheckBtn.innerText = "取消打卡";
-            uncheckBtn.onclick = () => adminUncheckMember(member.userId, displayName);
-            row.append(uncheckBtn);
-          }
           const removeBtn = document.createElement("button");
           removeBtn.type = "button";
           removeBtn.className = "line-btn btn-delete checkin-row-action";
@@ -3929,6 +3943,18 @@
 
         listEl.append(row);
       });
+    }
+
+    // 沿用活動視窗「@標記成員」的作法：只複製 LINE 名字，貼到群組就會觸發提及。
+    function copyCheckinMentions() {
+      const visible = getVisibleMembers();
+      if (visible.length === 0) {
+        alert("目前的篩選條件沒有任何成員可標記。");
+        return;
+      }
+      const mentionText = visible.map(member => `@${member.displayName || "未命名成員"}`).join(" ");
+      safeCopyText(mentionText);
+      showToast(`已複製 ${visible.length} 人的標記`);
     }
 
     function openCheckinModal() {
@@ -3946,42 +3972,34 @@
     }
 
     // 打卡刻意不做樂觀更新：rollbackEventState 綁死 eventsData，
-    // 要給名單用就得複製整套快照與回滾。打卡是低頻單次操作，
+    // 要給名單用就得複製整套快照與回滾。登記是低頻單次操作，
     // 等伺服器確認後再改本機資料，就完全不需要回滾程式碼。
     async function submitCheckIn() {
       if (checkinRequestInFlight) return;
       if (!ensureLoggedIn()) return;
-
-      // 同一顆按鈕切換：已打卡就是取消，未打卡就是打卡。
-      // 取消只送 actorUserId，後端不接受目標 userId，所以動不到別人。
-      const wasCheckedIn = isMemberCheckedIn(getMyMemberRecord());
-      const actionName = wasCheckedIn ? "取消打卡" : "打卡";
+      if (getMyMemberRecord()) return;
 
       checkinRequestInFlight = true;
       renderCheckinSelf();
 
       try {
-        const result = await sendPostToGAS(wasCheckedIn
-          ? { action: "cancelCheckIn" }
-          : { action: "checkIn", pictureUrl: currentUser?.pictureUrl || "" });
+        const result = await sendPostToGAS({
+          action: "checkIn",
+          pictureUrl: currentUser?.pictureUrl || ""
+        });
 
         if (!result.ok) {
-          alert(`${actionName}失敗。\n\n${result.message}`);
+          alert(`登記失敗。\n\n${result.message}`);
           return;
         }
         if (result.pending) {
-          showToast(result.persisted ? `${actionName}已保留，雲端會自動確認` : "結果待確認，請稍後重新整理");
+          showToast(result.persisted ? "登記已保留，雲端會自動確認" : "結果待確認，請稍後重新整理");
           return;
         }
 
-        // sendPostToGAS 不回傳 response body，所以本機自己更新這一筆。
-        if (wasCheckedIn) {
-          const mine = getMyMemberRecord();
-          if (mine) mine.checkedInAt = "";
-        } else {
-          applyLocalCheckIn();
-        }
-        showToast(wasCheckedIn ? "已取消打卡" : "打卡完成");
+        // sendPostToGAS 不回傳 response body，所以本機自己補上這一筆。
+        applyLocalCheckIn();
+        showToast("已登記，等待管理員確認");
       } finally {
         checkinRequestInFlight = false;
         renderCheckinList();
@@ -3990,22 +4008,15 @@
 
     function applyLocalCheckIn() {
       const myUserId = String(currentUser?.userId || "");
-      if (!myUserId) return;
-      const now = new Date().toISOString();
-      const existing = getMyMemberRecord();
-      if (existing) {
-        existing.checkedInAt = now;
-        existing.displayName = currentUser.displayName || existing.displayName;
-        existing.pictureUrl = currentUser.pictureUrl || existing.pictureUrl;
-      } else {
-        membersData.push({
-          userId: myUserId,
-          displayName: currentUser.displayName || "未命名成員",
-          pictureUrl: currentUser.pictureUrl || "",
-          joinedAt: now,
-          checkedInAt: now
-        });
-      }
+      if (!myUserId || getMyMemberRecord()) return;
+      // 登記只加人，不標記打卡成功——那是管理員的第二層。
+      membersData.push({
+        userId: myUserId,
+        displayName: currentUser.displayName || "未命名成員",
+        pictureUrl: currentUser.pictureUrl || "",
+        joinedAt: new Date().toISOString(),
+        checkedInAt: ""
+      });
     }
 
     function buildAdminCheckinPayload(extra) {
@@ -4014,17 +4025,21 @@
         : {});
     }
 
-    async function adminUncheckMember(targetUserId, displayName) {
+    async function adminSetCheckIn(targetUserId, displayName, checked, boxEl) {
       if (!currentUserCanDeleteAnyEvent) return;
-      if (!confirm(`確定要取消「${displayName}」的打卡嗎？他會變回未打卡狀態。`)) return;
+      if (boxEl) boxEl.disabled = true;
 
       const result = await sendPostToGAS(buildAdminCheckinPayload({
-        action: "adminUncheckMember",
-        targetUserId: targetUserId
+        action: "adminSetCheckIn",
+        targetUserId: targetUserId,
+        checked: checked
       }));
 
+      if (boxEl) boxEl.disabled = false;
+
       if (!result.ok) {
-        alert(`取消打卡失敗。\n\n${result.message}`);
+        if (boxEl) boxEl.checked = !checked;
+        alert(`${checked ? "勾選" : "取消"}打卡失敗。\n\n${result.message}`);
         return;
       }
       if (result.pending) {
@@ -4033,14 +4048,14 @@
       }
 
       const target = membersData.find(item => String(item.userId) === String(targetUserId));
-      if (target) target.checkedInAt = "";
+      if (target) target.checkedInAt = checked ? new Date().toISOString() : "";
       renderCheckinList();
-      showToast("已取消打卡");
+      showToast(checked ? `已標記 ${displayName} 打卡成功` : `已取消 ${displayName} 的打卡`);
     }
 
     async function adminRemoveMember(targetUserId, displayName) {
       if (!currentUserCanDeleteAnyEvent) return;
-      if (!confirm(`確定要將「${displayName}」從打卡名單移除嗎？\n\n此操作不可復原，他要重新打卡才會再出現。`)) return;
+      if (!confirm(`確定要將「${displayName}」從打卡名單移除嗎？\n\n此操作不可復原，他要重新登記才會再出現。`)) return;
 
       const result = await sendPostToGAS(buildAdminCheckinPayload({
         action: "adminRemoveMember",
@@ -4068,7 +4083,7 @@
         alert("名單目前沒有成員。");
         return;
       }
-      if (!confirm(`確定要重置全部 ${total} 人的打卡嗎？\n\n所有人都會變回未打卡，需要重新打卡一次。此操作不可復原。`)) return;
+      if (!confirm(`確定要重置全部 ${total} 人的打卡嗎？\n\n所有人都會變回未打卡（仍留在名單上），需要你重新勾選。此操作不可復原。`)) return;
 
       const result = await sendPostToGAS(buildAdminCheckinPayload({ action: "adminResetCheckIns" }));
 
@@ -5143,6 +5158,7 @@ ${getShareableUrl()}`;
       document.getElementById("btn-open-checkin").onclick = openCheckinModal;
       document.getElementById("btn-submit-checkin").onclick = submitCheckIn;
       document.getElementById("btn-reset-checkins").onclick = adminResetCheckIns;
+      document.getElementById("btn-mention-members").onclick = copyCheckinMentions;
 
       document.getElementById("checkin-search").addEventListener("input", (e) => {
         checkinQuery = e.target.value || "";
