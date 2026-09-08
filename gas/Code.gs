@@ -546,11 +546,8 @@ function doPost(e) {
       case "checkIn":
         result = checkIn_(spreadsheet, auditSheet, payload);
         break;
-      case "cancelCheckIn":
-        result = cancelCheckIn_(spreadsheet, auditSheet, payload);
-        break;
-      case "adminUncheckMember":
-        result = adminUncheckMember_(spreadsheet, auditSheet, payload);
+      case "adminSetCheckIn":
+        result = adminSetCheckIn_(spreadsheet, auditSheet, payload);
         break;
       case "adminRemoveMember":
         result = adminRemoveMember_(spreadsheet, auditSheet, payload);
@@ -982,9 +979,10 @@ function adminRemoveAttendee_(eventsSheet, auditSheet, payload) {
 
 
 /**
- * 打卡。首次打卡自動成為名單成員，已在名單者只更新打卡時間與顯示名稱。
+ * 登記打卡（第一層）。使用者只能把自己加進名單，**不能自己標記打卡成功**——
+ * 那是第二層，由管理員用 adminSetCheckIn_ 勾選。
  * 只認 payload.actorUserId（由前端 buildMutationPayload 自動帶入），
- * 不接受 payload 自帶的目標 userId，否則任何人都能替別人打卡。
+ * 不接受 payload 自帶的目標 userId，否則任何人都能替別人登記。
  */
 function checkIn_(spreadsheet, auditSheet, payload) {
   const membersSheet = getMembersSheetForRequest_(spreadsheet);
@@ -1000,10 +998,10 @@ function checkIn_(spreadsheet, auditSheet, payload) {
   let isNewMember = false;
 
   if (found) {
+    // 已登記過：只更新顯示名稱與頭像（LINE 名稱會變），不碰 checkedInAt。
     member = found.member;
     member.displayName = displayName;
     member.pictureUrl = pictureUrl || member.pictureUrl || "";
-    member.checkedInAt = now;
     writeMemberRow_(membersSheet, found.rowNumber, member);
   } else {
     // 名單是唯一由公開端點新增列的路徑，必須擋住灌爆表格。
@@ -1012,12 +1010,13 @@ function checkIn_(spreadsheet, auditSheet, payload) {
       throw new Error("打卡名單已達上限 " + APP_CONFIG.MAX_MEMBERS + " 人，請管理員先移除不再參與的成員。");
     }
     isNewMember = true;
+    // 新登記的人一律是「已登記、尚未確認」，checkedInAt 留空等管理員勾選。
     member = {
       userId: actorUserId,
       displayName: displayName,
       pictureUrl: pictureUrl,
       joinedAt: now,
-      checkedInAt: now
+      checkedInAt: ""
     };
     writeMemberRow_(membersSheet, 0, member);
   }
@@ -1025,7 +1024,7 @@ function checkIn_(spreadsheet, auditSheet, payload) {
   appendAudit_(auditSheet, payload, {
     eventId: "",
     actionType: "checkin",
-    action: isNewMember ? displayName + " 首次打卡並加入名單" : displayName + " 完成打卡",
+    action: isNewMember ? displayName + " 登記打卡並加入名單" : displayName + " 重新登記（已在名單）",
     details: { userId: actorUserId, isNewMember: isNewMember }
   });
 
@@ -1033,50 +1032,27 @@ function checkIn_(spreadsheet, auditSheet, payload) {
 }
 
 /**
- * 成員取消自己的打卡。與 adminUncheckMember_ 的差別是它只認 actorUserId，
- * 不接受目標 userId，所以不需要管理員密碼也不可能動到別人。
+ * 管理員勾選／取消「打卡成功」（第二層）。使用者只能登記，確認一律走這裡。
+ * checked 為真就寫入時間戳記，為假就清空。
  */
-function cancelCheckIn_(spreadsheet, auditSheet, payload) {
-  const membersSheet = getMembersSheetForRequest_(spreadsheet);
-  const actorUserId = requireText_(payload.actorUserId, "尚未取得 LINE 身分，請重新登入後再試。");
-
-  const found = findMemberRow_(membersSheet, actorUserId);
-  if (!found) throw new Error("名單中找不到你的紀錄，可能已被管理員移除。");
-
-  const member = found.member;
-  member.checkedInAt = "";
-  writeMemberRow_(membersSheet, found.rowNumber, member);
-
-  appendAudit_(auditSheet, payload, {
-    eventId: "",
-    actionType: "checkin_cancel",
-    action: (member.displayName || actorUserId) + " 取消自己的打卡",
-    details: { userId: actorUserId }
-  });
-
-  return { member: member };
-}
-
-/**
- * 管理員取消某位成員的打卡。成員仍留在名單上，只清掉打卡時間。
- */
-function adminUncheckMember_(spreadsheet, auditSheet, payload) {
+function adminSetCheckIn_(spreadsheet, auditSheet, payload) {
   assertAdminPermission_(payload);
   const membersSheet = getMembersSheetForRequest_(spreadsheet);
   const targetUserId = requireText_(payload.targetUserId, "缺少 targetUserId");
+  const checked = payload.checked === true || String(payload.checked || "").toLowerCase() === "true";
 
   const found = findMemberRow_(membersSheet, targetUserId);
   if (!found) throw new Error("名單中找不到這位成員，可能已被移除。");
 
   const member = found.member;
-  member.checkedInAt = "";
+  member.checkedInAt = checked ? new Date().toISOString() : "";
   writeMemberRow_(membersSheet, found.rowNumber, member);
 
   appendAudit_(auditSheet, payload, {
     eventId: "",
-    actionType: "admin_uncheck",
-    action: "取消 " + (member.displayName || targetUserId) + " 的打卡",
-    details: { userId: targetUserId }
+    actionType: checked ? "admin_check" : "admin_uncheck",
+    action: (checked ? "勾選 " : "取消 ") + (member.displayName || targetUserId) + " 的打卡成功",
+    details: { userId: targetUserId, checked: checked }
   });
 
   return { member: member };
