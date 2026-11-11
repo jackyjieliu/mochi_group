@@ -1173,8 +1173,17 @@
       margin-bottom: 12px;
     }
 
-    /* 篩選列按鈕用 hidden 隱藏時要蓋過 display:flex，否則 UA 的 [hidden] 會輸。 */
-    .nav-action[hidden] { display: none; }
+    /* 自己設了 display 的元素，hidden 屬性會被蓋掉（作者樣式永遠贏過 UA 的 [hidden]）。
+       所有用 .hidden = true 收起來的新區塊都要列在這裡，不然會像 v261111.1527 那樣永遠卡在畫面上。 */
+    .nav-action[hidden],
+    .login-card[hidden],
+    .loading-card[hidden],
+    .sync-status-line[hidden],
+    .login-card .line-btn[hidden],
+    .votes-section[hidden],
+    .create-from-vote-hint[hidden],
+    #create-event-fields[hidden],
+    #create-vote-fields[hidden] { display: none !important; }
 
     /* 登入卡：取代 ensureLoggedIn() 的瀏覽器 confirm()。同一張卡三種狀態，一次只出現一種。 */
     .login-card {
@@ -2313,7 +2322,7 @@
       <div class="header-top">
         <h1 class="brand-title">
           <span>群組活動布告欄</span>
-          <time id="app-version-badge" class="version-label" datetime="2026-11-11T15:27:49+08:00">v261111.1527</time>
+          <time id="app-version-badge" class="version-label" datetime="2026-11-11T15:38:10+08:00">v261111.1538</time>
         </h1>
         <span id="login-badge" class="sync-status-badge">同步中...</span>
       </div>
@@ -2943,7 +2952,7 @@
       "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec";
 
     const CONFIG = {
-      APP_VERSION: "v261111.1527", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
+      APP_VERSION: "v261111.1538", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
       LIFF_ID: SITE_SETUP.LIFF_ID || "",
       LIFF_URL: SITE_SETUP.LIFF_URL || "",
       GAS_API_URL: SITE_SETUP.GAS_API_URL || "",
