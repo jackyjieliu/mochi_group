@@ -36,7 +36,7 @@
       --line-green: #06C755;
       --line-green-dark: #05b34c;
       --line-green-light: #e6f9ed;
-      --line-bg: #8cabd9; /* Classic LINE Chatroom Blue-Gray */
+      --line-bg: #e9eef5; /* 淺灰藍底：白卡與文字更好讀（原本是飽和的 #8cabd9） */
       --line-card-bg: #ffffff;
       --line-text-main: #1e1e1e;
       --line-text-sub: #666666;
@@ -1172,6 +1172,178 @@
       font-weight: 700;
       margin-bottom: 12px;
     }
+
+    /* ==========================================================================
+       重新設計（Phase B）：壓縮的標題列、圖示入口、底部抽屜、區塊標題
+       ========================================================================== */
+    .line-header { background: transparent; box-shadow: none; padding: 4px 2px; margin-bottom: 10px; }
+    .header-top { margin-bottom: 0; gap: 8px; }
+    .brand-title { color: #0f172a; font-size: 17px; gap: 6px; }
+    .brand-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line-green); display: inline-block; flex: 0 0 auto; }
+    .version-label { background: #ffffff; border: 1px solid #d9e1ec; border-radius: 999px; }
+    .header-me {
+      display: flex; align-items: center; gap: 6px; min-width: 0;
+      background: #ffffff; border: 1px solid #d9e1ec; border-radius: 999px;
+      padding: 3px 10px 3px 3px; min-height: 34px; font-size: 12px; font-weight: 700; color: #334155;
+    }
+    .header-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
+    .header-avatar[hidden] { display: none !important; }
+    .header-me .user-name { max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; flex: 0 0 auto; display: inline-block; }
+    .sync-dot.is-done { background: var(--line-green); }
+    .sync-dot.is-wait { background: #f59e0b; }
+    .sync-dot.is-error { background: #ef4444; }
+    .header-login { display: inline-block; border-color: var(--line-green); color: var(--line-green); min-height: 28px; padding: 0 10px; }
+    .header-login[hidden] { display: none !important; }
+    .user-status-bar, .sync-clock-prompt { display: none !important; }
+
+    .section-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px; margin-bottom: 6px; }
+    .section-head h2 { margin: 0; font-size: 13px; font-weight: 800; color: #475569; letter-spacing: 0.02em; }
+    .section-head span { font-size: 12px; font-weight: 700; color: #64748b; }
+
+    .nav-filters {
+      display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px;
+      background: #ffffff; border-radius: 16px; padding: 6px; margin-bottom: 10px; overflow: visible;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    }
+    .nav-filters .nav-action {
+      min-height: 56px; flex-direction: column; gap: 3px; border-radius: 12px;
+      background: transparent; color: #334155; font-size: 12px; font-weight: 700; box-shadow: none;
+    }
+    .nav-filters .nav-action svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .nav-filters .nav-action.active, .nav-filters .sort-toggle.active { background: #0f172a; color: #ffffff; }
+
+    .event-card { border-radius: 16px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06); }
+
+    /* 底部抽屜：圓角頂、拉桿、不再整頁白 */
+    .modal-box { height: auto; max-height: calc(100% - 28px); border-radius: 20px 20px 0 0; }
+    .modal-box::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 2px; background: #cbd5e1; margin: 8px auto 0 auto; flex: 0 0 auto; }
+    .confirm-sheet .modal-box::before { display: none; }
+    .modal-header { padding: 10px 12px 10px 18px; border-bottom: none; }
+    .modal-title-text { font-size: 17px; }
+    .modal-close { width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%; font-size: 18px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+    .modal-footer { display: flex; flex-direction: column !important; gap: 6px !important; padding: 12px 18px 18px 18px; border-top: 1px solid #eef2f7; }
+    .modal-footer .line-btn { width: 100%; min-height: 48px !important; font-size: 15px; border-radius: 12px; flex: none !important; }
+    .modal-footer .btn-join, .modal-footer .btn-cancel { order: 1; }
+    .modal-footer .btn-detail { order: 2; background: transparent; color: #475569; min-height: 44px !important; }
+    .modal-footer .btn-delete { order: 3; background: transparent; color: #dc2626; border: 1px solid #fecaca; }
+
+    .fab-btn { display: inline-flex; align-items: center; gap: 6px; height: 52px; padding: 0 20px 0 16px; border-radius: 26px; font-size: 16px; }
+    .fab-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; }
+
+    .toast-notification {
+      top: auto; bottom: max(20px, env(safe-area-inset-bottom)); left: 12px; right: 12px;
+      transform: translateY(12px); border-radius: 14px; padding: 12px 14px;
+      font-size: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left;
+    }
+    .toast-notification.show { transform: translateY(0); }
+    .toast-action { border: none; background: var(--line-green); color: #ffffff; border-radius: 10px; min-height: 40px; padding: 0 14px; font-weight: 800; font-family: var(--font-line); font-size: 14px; flex: 0 0 auto; }
+    .toast-action[hidden] { display: none !important; }
+
+    /* 卡片列：左日期塊、中標題與一行資訊、右狀態。.card-summary-bar 這個 class 要留著，
+       加強推廣的櫻花與許願的星空都掛在它上面（AGENTS 規則）。 */
+    .card-summary-bar.card-row { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; min-height: 72px; }
+    .card-summary-bar.card-row > * { position: relative; z-index: 1; }
+    .date-block { width: 48px; height: 48px; border-radius: 12px; background: #f1f5f9; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+    .date-block em { font-style: normal; font-size: 10px; font-weight: 800; color: #64748b; margin-bottom: 1px; }
+    .date-block b { font-size: 18px; font-weight: 800; color: #0f172a; }
+    .date-block b.is-text { font-size: 14px; }
+    .date-block small { font-size: 10px; font-weight: 700; color: #64748b; margin-top: 1px; }
+    .date-block.is-green { background: var(--line-green-light); } .date-block.is-green em, .date-block.is-green b, .date-block.is-green small { color: var(--line-green-dark); }
+    .date-block.is-purple { background: #ede9fe; } .date-block.is-purple b, .date-block.is-purple small { color: #6d28d9; }
+    .date-block.is-pink { background: #fce7f3; } .date-block.is-pink em, .date-block.is-pink b, .date-block.is-pink small { color: #be185d; }
+    .date-block.is-blue { background: #dbeafe; } .date-block.is-blue b, .date-block.is-blue small { color: #1d4ed8; }
+    .date-block.is-gray em, .date-block.is-gray b, .date-block.is-gray small { color: #94a3b8; }
+    .card-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+    .card-main .card-row-title { font-size: 16px; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-main .card-row-meta { font-size: 12px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .tag-badge { font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; }
+    .tag-mine { background: #0f172a; color: #ffffff; }
+    .tag-promo { background: #be185d; color: #ffffff; }
+    .avatar-stack { display: flex; align-items: center; }
+    .avatar-stack img, .avatar-stack .more { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #ffffff; margin-left: -8px; object-fit: cover; box-sizing: border-box; }
+    .avatar-stack img:first-child, .avatar-stack .more:first-child { margin-left: 0; }
+    .avatar-stack .more { background: #f1f5f9; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #475569; padding: 0 2px; }
+    .avatar-stack.lg img, .avatar-stack.lg .more { width: 34px; height: 34px; font-size: 12px; }
+    .event-card.is-expanded .card-summary-bar.card-row { border-bottom: 1px solid #f1f5f9; }
+    .card-body-collapsible { padding: 0 14px; }
+    .event-card.is-expanded .card-body-collapsible { padding: 0 14px 14px 14px; }
+    .card-kv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-top: 12px; }
+    .card-kv > div { background: #f8fafc; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .card-kv small { font-size: 11px; font-weight: 700; color: #64748b; }
+    .card-kv b { font-size: 14px; font-weight: 700; color: #0f172a; overflow-wrap: anywhere; }
+    .card-kv .wide { grid-column: 1 / -1; }
+    .card-kv .event-location a { color: #1d4ed8; font-weight: 700; }
+    .card-desc { margin: 10px 0 0 0; font-size: 14px; color: #334155; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .card-primary { margin-top: 12px; }
+    .card-primary .line-btn { width: 100%; min-height: 48px; font-size: 15px; border-radius: 12px; }
+    .card-ghost-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin-top: 6px; }
+    .card-ghost-row .line-btn { background: transparent; color: #475569; min-height: 44px; border: none; font-size: 14px; }
+    .card-people { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+    .card-people .names { font-size: 12px; color: #64748b; font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+    .card-people-full { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+
+    /* 表單：四選一、分組卡、時間步進 */
+    .create-mode-switch.is-four { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; }
+    .create-mode-switch.is-four button { font-size: 14px; padding: 8px 4px; min-height: 40px; }
+    .modal-form-body { background: #f5f7fa; }
+    .form-section { background: #ffffff; border-radius: 16px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05); }
+    .form-section-title { margin: 0 0 10px 0; font-size: 12px; font-weight: 800; color: #64748b; letter-spacing: 0.04em; }
+    .form-section .form-group:last-child { margin-bottom: 0; }
+    .form-two-col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .form-two-col .form-group { margin-bottom: 16px; }
+    .legacy-type-toggles { display: none !important; }
+    .datetime-picker-grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+    .time-stepper { height: 48px; box-sizing: border-box; border: 1px solid #e2e8f0; border-radius: 10px; display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; background: #ffffff; }
+    .time-stepper .time-step { border: none; background: transparent; height: 46px; font-size: 20px; color: #475569; font-family: var(--font-line); cursor: pointer; }
+    .time-stepper .time-display { text-align: center; font-size: 16px; font-weight: 800; color: #0f172a; }
+    .time-stepper .time-display.is-empty { color: #94a3b8; font-weight: 700; font-size: 14px; }
+    /* 下拉保留給驗證與既有程式讀值；畫面上不佔位、不可點。 */
+    .offscreen-selects, .offscreen-selects select, select.offscreen-selects { position: absolute !important; width: 1px !important; height: 1px !important; min-height: 0 !important; opacity: 0; pointer-events: none; overflow: hidden; margin: 0; padding: 0; border: 0; }
+    .datetime-picker-field { position: relative; }
+    .host-row { display: flex; align-items: center; gap: 10px; position: relative; }
+    .host-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
+    .host-name { font-size: 15px; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .handoff-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) 26px; gap: 10px; align-items: center; padding: 10px 14px; min-height: 56px; border-bottom: 1px solid #f1f5f9; background: #ffffff; border-left: none; border-right: none; border-top: none; width: 100%; text-align: left; font-family: var(--font-line); cursor: pointer; }
+    .handoff-row:last-child { border-bottom: none; }
+    .handoff-row img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
+    .handoff-row .nm { font-size: 15px; font-weight: 700; color: #0f172a; }
+    .handoff-row .sub { font-size: 11px; color: #64748b; }
+    .handoff-row .radio { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #cbd5e1; box-sizing: border-box; }
+    .handoff-row[aria-pressed="true"] .radio { border-color: var(--line-green); background: var(--line-green); box-shadow: inset 0 0 0 4px #ffffff; }
+
+    /* 活動詳情：頂部大字、五顆圖示鈕、可收合區塊、留言輸入列 */
+    .detail-hero { display: flex; flex-direction: column; gap: 8px; padding: 2px 0 10px 0; }
+    .detail-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .detail-hero-title { font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.25; overflow-wrap: anywhere; }
+    .detail-line { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #334155; flex-wrap: wrap; }
+    .detail-line.is-big { font-size: 16px; font-weight: 800; color: #0f172a; }
+    .detail-line svg { width: 18px; height: 18px; fill: none; stroke: #64748b; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+    .detail-line a { color: #1d4ed8; font-weight: 700; }
+    .detail-sep { color: #94a3b8; }
+    .detail-iconrow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-bottom: 12px; }
+    .detail-iconrow button { border: none; background: #f8fafc; border-radius: 12px; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-family: var(--font-line); font-size: 11px; font-weight: 700; color: #334155; cursor: pointer; padding: 0 2px; }
+    .detail-iconrow button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .detail-iconrow button:disabled { color: #94a3b8; cursor: not-allowed; }
+    .detail-iconrow button.is-active { background: #fce7f3; color: #be185d; }
+    .detail-iconrow button .lbl { white-space: nowrap; }
+    .detail-acc { border: 1px solid #eef2f7; border-radius: 14px; overflow: hidden; margin-bottom: 10px; }
+    .detail-acc summary { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; font-size: 14px; font-weight: 800; color: #0f172a; background: #f8fafc; cursor: pointer; list-style: none; }
+    .detail-acc summary::-webkit-details-marker { display: none; }
+    .detail-acc summary::after { content: "▾"; color: #94a3b8; font-size: 12px; margin-left: 8px; }
+    .detail-acc:not([open]) summary::after { content: "▸"; }
+    .detail-acc-count { font-size: 12px; font-weight: 700; color: #64748b; margin-left: auto; margin-right: 0; }
+    .detail-acc-body { padding: 10px 14px 12px 14px; }
+    .detail-desc { font-size: 14px; color: #334155; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .detail-people { display: flex; flex-wrap: wrap; gap: 6px; }
+    .detail-acc .history-box { border: none; border-radius: 0; background: #ffffff; max-height: 40vh; padding: 8px 14px 4px 14px; }
+    .detail-compose { display: grid; grid-template-columns: minmax(0, 1fr) 72px; gap: 8px; align-items: center; padding: 8px 14px 4px 14px; }
+    .detail-compose .line-input { height: 44px; min-height: 44px; }
+    .detail-compose .line-btn { min-height: 44px; }
+    .detail-acc .form-help { padding: 0 14px 10px 14px; }
+    #btn-comment-event[hidden] { display: none !important; }
+    .modal-footer .form-help { order: 9; }
 
     /* 自己設了 display 的元素，hidden 屬性會被蓋掉（作者樣式永遠贏過 UA 的 [hidden]）。
        所有用 .hidden = true 收起來的新區塊都要列在這裡，不然會像 v261111.1527 那樣永遠卡在畫面上。 */
@@ -2321,19 +2493,17 @@
     <header class="line-header">
       <div class="header-top">
         <h1 class="brand-title">
-          <span>群組活動布告欄</span>
-          <time id="app-version-badge" class="version-label" datetime="2026-11-11T15:38:10+08:00">v261111.1538</time>
+          <span class="brand-dot" aria-hidden="true"></span>
+          <span>活動布告欄</span>
+          <time id="app-version-badge" class="version-label" datetime="2026-11-11T15:59:35+08:00">v261111.1559</time>
         </h1>
-        <span id="login-badge" class="sync-status-badge">同步中...</span>
-      </div>
-      
-      <div class="user-status-bar">
-        <div>
-          <span style="color: #64748b;">登入身份：</span>
+        <div id="header-me" class="header-me">
+          <img id="header-avatar" class="header-avatar" alt="" hidden>
           <span id="current-name" class="user-name">載入中...</span>
+          <span id="login-badge" class="sync-dot" role="status" aria-label="同步中"></span>
+          <button id="btn-login-action" class="dev-btn header-login" type="button">LINE 登入</button>
+          <button id="btn-dev-toggle" class="dev-btn" type="button">測試身分</button>
         </div>
-        <button id="btn-login-action" class="dev-btn" style="display:inline-block; border-color:var(--line-green); color:var(--line-green);">LINE 登入</button>
-        <button id="btn-dev-toggle" class="dev-btn">測試切換身分</button>
       </div>
     </header>
 
@@ -2360,21 +2530,25 @@
 
     <!-- 投票區：有自己的區塊，在篩選列之上，不受排序與分類影響。沒有投票時整區隱藏。 -->
     <section id="votes-section" class="votes-section" aria-label="投票" hidden>
-      <div class="votes-section-head">
-        <span>投票</span>
-        <span id="votes-section-count"></span>
-      </div>
+      <div class="section-head"><h2>投票</h2><span id="votes-section-count"></span></div>
       <div id="vote-list"></div>
     </section>
 
-    <!-- Navigation: 排序面板開關 + 次要入口 -->
+    <!-- 活動區標題。投票區在上面有自己的標題；這條按鈕列只管活動，所以放在這裡。 -->
+    <div class="section-head"><h2>活動</h2><span id="events-section-count"></span></div>
+
+    <!-- Navigation: 排序面板開關 + 次要入口（圖示＋兩字） -->
     <nav class="nav-filters">
       <button id="btn-toggle-sort-panel" class="nav-action sort-toggle" type="button"
-              aria-expanded="false" aria-controls="sort-panel"><span>排序</span></button>
+              aria-expanded="false" aria-controls="sort-panel">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg><span>排序</span></button>
       <!-- 打卡先隱藏（使用者決定）。程式與 Members 表都保留，拿掉 hidden 就回來。 -->
-      <button id="btn-open-checkin" class="nav-action" type="button" hidden><span>打卡</span></button>
-      <button id="btn-broadcast-all" class="nav-action" type="button"><span>宣傳</span></button>
-      <button id="btn-open-calendar" class="nav-action" type="button"><span>日曆</span></button>
+      <button id="btn-open-checkin" class="nav-action" type="button" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>打卡</span></button>
+      <button id="btn-broadcast-all" class="nav-action" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l18-5v12L3 13z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg><span>宣傳</span></button>
+      <button id="btn-open-calendar" class="nav-action" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>日曆</span></button>
     </nav>
 
     <!-- 排序與篩選面板（點「排序」展開） -->
@@ -2415,8 +2589,8 @@
 
   <!-- Floating Action Buttons Group (日曆 & 宣傳 & 揪團) -->
   <div class="fab-group">
-    <button id="fab-add-event" class="fab-btn fab-add">
-      <span>揪團</span>
+    <button id="fab-add-event" class="fab-btn fab-add" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>揪團</span>
     </button>
   </div>
 
@@ -2425,7 +2599,7 @@
     <div class="modal-box">
       <div class="modal-header">
         <span id="title-checkin" class="modal-title-text">打卡紀錄</span>
-        <button class="modal-close" data-close="modal-checkin" aria-label="關閉打卡紀錄視窗">關閉</button>
+        <button class="modal-close" data-close="modal-checkin" aria-label="關閉打卡紀錄視窗">✕</button>
       </div>
       <div class="modal-form-body">
         <div class="checkin-self">
@@ -2473,7 +2647,7 @@
     <div class="modal-box">
       <div class="modal-header">
         <span id="title-calendar" class="modal-title-text">活動日曆</span>
-        <button class="modal-close" data-close="modal-calendar" aria-label="關閉活動日曆視窗">關閉</button>
+        <button class="modal-close" data-close="modal-calendar" aria-label="關閉活動日曆視窗">✕</button>
       </div>
       <div class="modal-form-body">
         <p id="calendar-hint" class="calendar-hint">
@@ -2485,18 +2659,11 @@
         <div id="calendar-unavailable" class="calendar-unavailable" style="display:none;">
           尚未設定日曆，或雲端仍在同步中。請稍後再試。
         </div>
-        <div class="calendar-actions">
-          <a id="btn-subscribe-calendar" class="line-btn btn-join" target="_blank" rel="noopener noreferrer">
-            訂閱到我的 Google 日曆
-          </a>
-          <a id="btn-open-calendar-web" class="line-btn btn-calendar" target="_blank" rel="noopener noreferrer">
-            在瀏覽器開啟
-          </a>
-        </div>
-        <p class="calendar-note">
-          訂閱後，之後新增或修改的活動都會自動出現在你的 Google 日曆。
-          若按了訂閱卻看不到內容，代表這本日曆尚未開放給你，請找管理員設定共用權限。
-        </p>
+      </div>
+      <div class="modal-footer">
+        <a id="btn-subscribe-calendar" class="line-btn btn-join" target="_blank" rel="noopener noreferrer">訂閱到我的 Google 日曆</a>
+        <a id="btn-open-calendar-web" class="line-btn btn-detail" target="_blank" rel="noopener noreferrer">在瀏覽器開啟</a>
+        <p class="form-help" style="text-align:center; margin:0;">看不到內容？代表日曆尚未開放給你，請找管理員設定共用權限。</p>
       </div>
     </div>
   </div>
@@ -2506,7 +2673,7 @@
     <div class="modal-box">
       <div class="modal-header">
         <span id="title-comment" class="modal-title-text">活動留言</span>
-        <button class="modal-close" data-close="modal-comment" aria-label="關閉活動留言視窗">關閉</button>
+        <button class="modal-close" data-close="modal-comment" aria-label="關閉活動留言視窗">✕</button>
       </div>
       <div class="modal-form-body" style="padding-bottom:18px;">
         <div class="comment-target">
@@ -2537,36 +2704,40 @@
     <div class="modal-box">
       <div class="modal-header">
         <span id="title-create-event" class="modal-title-text">發起揪團</span>
-        <button class="modal-close" data-close="modal-create" aria-label="關閉發起揪團視窗">關閉</button>
+        <button class="modal-close" data-close="modal-create" aria-label="關閉發起揪團視窗">✕</button>
       </div>
       <form id="form-create-event" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
         <div class="modal-form-body">
-          <!-- 活動｜投票 切換。預設活動，發起活動不多一個步驟。 -->
-          <div class="create-mode-switch" role="group" aria-label="發起類型">
-            <button type="button" data-create-mode="event" aria-pressed="true">活動</button>
-            <button type="button" id="create-mode-vote" data-create-mode="vote" aria-pressed="false">投票</button>
+          <!-- 四選一：活動｜固定團｜許願｜投票。取代原本的兩個勾選框＋投票切換。預設活動。 -->
+          <div class="create-mode-switch is-four" role="group" aria-label="發起類型">
+            <button type="button" data-create-type="event" aria-pressed="true">活動</button>
+            <button type="button" id="create-type-fixed" data-create-type="fixed" aria-pressed="false">固定團</button>
+            <button type="button" id="create-type-wish" data-create-type="wish" aria-pressed="false">許願</button>
+            <button type="button" id="create-mode-vote" data-create-type="vote" aria-pressed="false">投票</button>
           </div>
+          <p id="create-type-hint" class="form-help" style="margin:-6px 0 12px 0;"></p>
           <div id="create-from-vote-hint" class="create-from-vote-hint" hidden></div>
 
           <div id="create-event-fields">
-          <div class="form-group">
-            <label class="form-label" for="input-title">活動名稱 *</label>
-            <input type="text" id="input-title" class="line-input" placeholder="例如：週末羽球同樂會" required>
-          </div>
-          <div class="form-group">
-            <div class="form-label-row">
-              <div class="form-label">日期與時間 *</div>
-              <span style="display:flex; gap:12px; align-items:center; flex-shrink:0;">
-                <label id="fixed-group-control" class="fixed-group-toggle" for="input-is-fixed">
-                  <input type="checkbox" id="input-is-fixed">
-                  <span>固定團</span>
-                </label>
-                <label id="wish-control" class="wish-toggle" for="input-is-wish">
-                  <input type="checkbox" id="input-is-wish">
-                  <span>許願</span>
-                </label>
-              </span>
+          <section class="form-section">
+            <h3 class="form-section-title">基本</h3>
+            <div class="form-group">
+              <label class="form-label" for="input-title">活動名稱 *</label>
+              <input type="text" id="input-title" class="line-input" placeholder="例如：週末羽球同樂會" required>
             </div>
+            <div class="form-group">
+              <label class="form-label" for="input-location">地點</label>
+              <input type="text" id="input-location" class="line-input" value="待定" placeholder="地名、地址或 Google 地圖網址">
+            </div>
+          </section>
+
+          <section class="form-section" id="create-time-section">
+            <h3 class="form-section-title">時間</h3>
+            <!-- 兩個舊勾選框保留在 DOM（程式讀 .checked），畫面上由四選一控制，CSS 隱藏。 -->
+            <span class="legacy-type-toggles">
+              <label id="fixed-group-control" class="fixed-group-toggle" for="input-is-fixed"><input type="checkbox" id="input-is-fixed"><span>固定團</span></label>
+              <label id="wish-control" class="wish-toggle" for="input-is-wish"><input type="checkbox" id="input-is-wish"><span>許願</span></label>
+            </span>
             <div id="wish-hint" class="wish-hint" style="display:none;">
               許願活動會在列表上特別標記。建立滿 3 天的午夜結算時，
               報名人數若沒有超過 3 人就會自動刪除，且不保留紀錄。
@@ -2576,44 +2747,51 @@
                 <span class="datetime-picker-label">日期</span>
                 <input type="date" id="input-date" class="line-input" required>
               </label>
-              <label class="datetime-picker-field">
-                <span class="datetime-picker-label">時</span>
-                <select id="input-hour" class="line-input" required aria-label="活動開始小時"></select>
-              </label>
-              <label class="datetime-picker-field">
-                <span class="datetime-picker-label">分</span>
-                <select id="input-minute" class="line-input" required aria-label="活動開始分鐘">
-                  <option value="00">00</option>
-                  <option value="15">15</option>
-                  <option value="30">30</option>
-                  <option value="45">45</option>
-                </select>
-              </label>
+              <div class="datetime-picker-field">
+                <span class="datetime-picker-label">時間</span>
+                <div class="time-stepper" data-prefix="input">
+                  <button type="button" class="time-step" data-step="-15" aria-label="減 15 分">−</button>
+                  <b class="time-display" id="input-time-display">19:00</b>
+                  <button type="button" class="time-step" data-step="15" aria-label="加 15 分">+</button>
+                </div>
+                <span class="offscreen-selects">
+                  <select id="input-hour" class="line-input" required aria-label="活動開始小時"></select>
+                  <select id="input-minute" class="line-input" required aria-label="活動開始分鐘">
+                    <option value="00">00</option>
+                    <option value="15">15</option>
+                    <option value="30">30</option>
+                    <option value="45">45</option>
+                  </select>
+                </span>
+              </div>
               <input type="hidden" id="input-datetime">
             </div>
             <div id="input-fixed-time-wrap" class="fixed-time-field">
               <label class="datetime-picker-field" for="input-fixed-time">
-                <span class="datetime-picker-label">固定團時間（選填）</span>
+                <span class="datetime-picker-label">固定時間（選填，自由文字）</span>
                 <input type="text" id="input-fixed-time" class="line-input" placeholder="例如：每週三 19:30～21:30；沒有固定時間可留空">
               </label>
             </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="input-location">活動地點（預設待定，可輸入地址或貼上地圖網址）</label>
-            <input type="text" id="input-location" class="line-input" value="待定" placeholder="例如：台北市立羽球館">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="input-fee">活動費用</label>
-            <input type="text" id="input-fee" class="line-input" placeholder="例如：$200 / 人 或 免費">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="input-max">人數上限 (0 代表無限制)</label>
-            <input type="number" id="input-max" class="line-input" value="0" min="0">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="input-desc">補充說明</label>
-            <textarea id="input-desc" class="line-textarea" placeholder="例如：請自備球拍、穿著運動鞋！"></textarea>
-          </div>
+            <p id="create-time-help" class="form-help">每 15 分一格。活動開始 2 小時後自動標示已過期。</p>
+          </section>
+
+          <section class="form-section">
+            <h3 class="form-section-title">細節</h3>
+            <div class="form-two-col">
+              <div class="form-group">
+                <label class="form-label" for="input-fee">費用</label>
+                <input type="text" id="input-fee" class="line-input" placeholder="免費">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="input-max">人數上限</label>
+                <input type="number" id="input-max" class="line-input" value="0" min="0" placeholder="0 = 不限">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="input-desc">補充說明</label>
+              <textarea id="input-desc" class="line-textarea" placeholder="例如：請自備球拍、穿著運動鞋"></textarea>
+            </div>
+          </section>
           </div>
 
           <!-- 投票表單。欄位與活動分開，切換時用 disabled 讓隱藏那組不參與驗證。 -->
@@ -2690,143 +2868,168 @@
     <div class="modal-box">
       <div class="modal-header">
         <span id="title-edit-event" class="modal-title-text">編輯活動內容</span>
-        <button class="modal-close" data-close="modal-edit" aria-label="關閉活動編輯視窗">關閉</button>
+        <button class="modal-close" data-close="modal-edit" aria-label="關閉活動編輯視窗">✕</button>
       </div>
       <form id="form-edit-event" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
         <div class="modal-form-body">
-          <div class="form-group">
-            <label class="form-label" for="edit-title">活動名稱 *</label>
-            <input type="text" id="edit-title" class="line-input" required>
-          </div>
-          <div class="form-group">
-            <div class="form-label">日期與時間 *</div>
+          <section class="form-section">
+            <h3 class="form-section-title">基本</h3>
+            <div class="form-group">
+              <label class="form-label" for="edit-title">活動名稱 *</label>
+              <input type="text" id="edit-title" class="line-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="edit-location">地點</label>
+              <input type="text" id="edit-location" class="line-input">
+            </div>
+          </section>
+
+          <section class="form-section">
+            <h3 class="form-section-title">時間</h3>
             <div id="edit-standard-time" class="datetime-picker-grid">
               <label class="datetime-picker-field">
                 <span class="datetime-picker-label">日期</span>
                 <input type="date" id="edit-date" class="line-input" required>
               </label>
-              <label class="datetime-picker-field">
-                <span class="datetime-picker-label">時</span>
-                <select id="edit-hour" class="line-input" required aria-label="活動開始小時"></select>
-              </label>
-              <label class="datetime-picker-field">
-                <span class="datetime-picker-label">分</span>
-                <select id="edit-minute" class="line-input" required aria-label="活動開始分鐘">
-                  <option value="00">00</option>
-                  <option value="15">15</option>
-                  <option value="30">30</option>
-                  <option value="45">45</option>
-                </select>
-              </label>
+              <div class="datetime-picker-field">
+                <span class="datetime-picker-label">時間</span>
+                <div class="time-stepper" data-prefix="edit">
+                  <button type="button" class="time-step" data-step="-15" aria-label="減 15 分">−</button>
+                  <b class="time-display" id="edit-time-display">19:00</b>
+                  <button type="button" class="time-step" data-step="15" aria-label="加 15 分">+</button>
+                </div>
+                <span class="offscreen-selects">
+                  <select id="edit-hour" class="line-input" required aria-label="活動開始小時"></select>
+                  <select id="edit-minute" class="line-input" required aria-label="活動開始分鐘">
+                    <option value="00">00</option>
+                    <option value="15">15</option>
+                    <option value="30">30</option>
+                    <option value="45">45</option>
+                  </select>
+                </span>
+              </div>
               <input type="hidden" id="edit-datetime">
             </div>
             <div id="edit-fixed-time-wrap" class="fixed-time-field">
               <label class="datetime-picker-field" for="edit-fixed-time">
-                <span class="datetime-picker-label">固定團時間（選填）</span>
+                <span class="datetime-picker-label">固定時間（選填，自由文字）</span>
                 <input type="text" id="edit-fixed-time" class="line-input" placeholder="例如：每週三 19:30～21:30；沒有固定時間可留空">
               </label>
             </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="edit-location">活動地點 (選填)</label>
-            <input type="text" id="edit-location" class="line-input">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="edit-fee">活動費用</label>
-            <input type="text" id="edit-fee" class="line-input">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="edit-max">人數上限 (0 代表無限制)</label>
-            <input type="number" id="edit-max" class="line-input" min="0">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="edit-host-user">主揪</label>
-            <select id="edit-host-user" class="line-input" aria-describedby="edit-host-help"></select>
-            <div id="edit-host-help" class="form-help">主揪若要退出活動，需要交棒給新主揪</div>
+          </section>
+
+          <section class="form-section">
+            <h3 class="form-section-title">細節</h3>
+            <div class="form-two-col">
+              <div class="form-group">
+                <label class="form-label" for="edit-fee">費用</label>
+                <input type="text" id="edit-fee" class="line-input">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="edit-max">人數上限</label>
+                <input type="number" id="edit-max" class="line-input" min="0" placeholder="0 = 不限">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="edit-desc">補充說明</label>
+              <textarea id="edit-desc" class="line-textarea"></textarea>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <h3 class="form-section-title">主揪</h3>
+            <div class="host-row">
+              <img id="edit-host-avatar" class="host-avatar" alt="">
+              <div style="flex:1; min-width:0;">
+                <div id="edit-host-display" class="host-name">—</div>
+                <div class="form-help">目前主揪</div>
+              </div>
+              <button id="btn-open-handoff" class="line-btn btn-detail" type="button" style="min-height:40px;">交棒給…</button>
+            </div>
+            <!-- 下拉選單保留在 DOM 給既有的送出邏輯讀值；畫面上用上面的交棒按鈕開名單。 -->
+            <select id="edit-host-user" class="line-input offscreen-selects" aria-describedby="edit-host-help"></select>
+            <div id="edit-host-help" class="form-help">主揪若要退出活動，需要交棒給新主揪。只能選已報名成員。</div>
             <div id="edit-host-hint" class="form-help" style="display:none; color:#94a3b8;">只有主揪或管理員可以更換主揪，其他欄位你都能編輯</div>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="edit-desc">補充說明</label>
-            <textarea id="edit-desc" class="line-textarea"></textarea>
-          </div>
+          </section>
         </div>
         <div class="modal-footer" style="display:flex; gap:10px;">
+          <button type="button" class="line-btn btn-detail" style="flex:1;" data-close="modal-edit">取消</button>        <div class="modal-footer" style="display:flex; gap:10px;">
           <button type="button" class="line-btn btn-detail" style="flex:1;" data-close="modal-edit">取消</button>
-          <button type="submit" class="line-btn btn-join" style="flex:1.5; padding:10px;">儲存並更新通報</button>
+          <button type="submit" class="line-btn btn-join" style="flex:1.5; padding:10px;">儲存變更</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Modal: Event Detail & History Logs -->
+  <!-- Modal: Event Detail & History Logs（底部抽屜：頂部大字、五顆圖示鈕、可收合區塊、留言直接在底下寫） -->
   <div id="modal-detail" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="detail-title">
     <div class="modal-box">
       <div class="modal-header">
         <span id="detail-title" class="modal-title-text">活動詳情</span>
-        <div style="display:flex; gap:6px;">
-          <button id="btn-trigger-edit" class="line-btn btn-edit" style="padding:4px 8px; font-size:12px;">編輯內容</button>
-          <button class="modal-close" data-close="modal-detail" aria-label="關閉活動詳情視窗">關閉</button>
-        </div>
-      </div>
-      
-      <div class="modal-form-body">
-        <div style="background:#f8fafc; border-radius:12px; padding:12px; margin-bottom:14px; border:1px solid #e2e8f0;">
-          <div style="margin-bottom:8px;"><strong>時間：</strong><span id="detail-time">--</span></div>
-          <div style="margin-bottom:8px;"><strong>地點：</strong><span id="detail-location">--</span></div>
-          <div style="margin-bottom:8px;"><strong>費用：</strong><span id="detail-fee">--</span></div>
-          
-          <div><strong>主揪：</strong><span id="detail-host-name">--</span></div>
-        </div>
-
-        <div style="margin-bottom:14px;">
-          <div style="font-weight:700; color:#475569; margin-bottom:4px;">具體活動說明：</div>
-          <div id="detail-desc" style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0; white-space:pre-wrap; color:#334155;">--</div>
-        </div>
-
-        <div style="margin-bottom:14px;">
-          <div class="detail-attendee-heading-row" style="font-weight:700; color:#475569; margin-bottom:6px;">
-            <span><span id="detail-attendee-heading">已報名成員名冊</span> (<span id="detail-capacity-text" style="color:var(--line-green); font-weight:bold;">0/0</span>)：</span>
-            <span class="detail-member-actions">
-              <button id="btn-mention-attendees" class="line-btn btn-calendar" style="padding:4px 8px; font-size:12px;">
-                @標記成員
-              </button>
-              <button id="btn-share-event" class="line-btn btn-calendar" style="padding:4px 8px; font-size:12px;">
-                分享活動
-              </button>
-              <button id="btn-highlight-event" class="line-btn btn-highlight" style="padding:4px 8px; font-size:12px;">
-                加強推廣
-              </button>
-              <button id="btn-add-personal-calendar" class="line-btn btn-calendar" style="padding:4px 8px; font-size:12px;">
-                加到我的日曆
-              </button>
-            </span>
-          </div>
-          <div id="detail-attendees" style="background:#f8fafc; padding:10px; border-radius:10px; border:1px solid #e2e8f0; max-height:140px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:6px;">
-            <!-- Attendees -->
-          </div>
-        </div>
-
-        <!-- History Update Logs -->
-        <div>
-          <div class="detail-history-heading-row" style="font-weight:700; color:#475569;">
-            <span>活動完整紀錄（<span id="detail-history-count">0</span>）：</span>
-            <button id="btn-comment-event" class="line-btn btn-calendar" type="button" style="padding:4px 10px; font-size:12px;">
-              新增留言
-            </button>
-          </div>
-          <div id="detail-history-list" class="history-box" aria-live="polite">
-            <!-- History log items -->
-          </div>
-        </div>
+        <button class="modal-close" data-close="modal-detail" aria-label="關閉活動詳情視窗">✕</button>
       </div>
 
-      <div class="modal-footer" style="display:flex; gap:10px;">
-        <button id="btn-delete-event" class="line-btn btn-delete" style="flex:1; display:none;">
-          刪除活動
-        </button>
-        <button class="line-btn btn-detail" style="flex:1;" data-close="modal-detail">
-          關閉視窗
-        </button>
+      <div class="modal-form-body" style="background:#ffffff;">
+        <div class="detail-hero">
+          <div id="detail-tags" class="detail-tags"></div>
+          <div id="detail-hero-title" class="detail-hero-title">--</div>
+          <div class="detail-line is-big"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span id="detail-time">--</span></div>
+          <div class="detail-line"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span id="detail-location">--</span></div>
+          <div class="detail-line"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span id="detail-fee">--</span><span class="detail-sep">·</span><span>主揪 <b id="detail-host-name">--</b></span></div>
+        </div>
+
+        <div class="detail-iconrow">
+          <button id="btn-trigger-edit" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg><span class="lbl">編輯</span></button>
+          <button id="btn-share-event" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4M12 2v14"/></svg><span class="lbl">分享</span></button>
+          <button id="btn-mention-attendees" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg><span class="lbl">標記</span></button>
+          <button id="btn-add-personal-calendar" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4"/></svg><span class="lbl">日曆</span></button>
+          <button id="btn-highlight-event" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.3 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z"/></svg><span class="lbl">推廣</span></button>
+        </div>
+
+        <details class="detail-acc" open>
+          <summary>說明</summary>
+          <div id="detail-desc" class="detail-acc-body detail-desc">--</div>
+        </details>
+
+        <details class="detail-acc" open>
+          <summary><span id="detail-attendee-heading">已報名成員名冊</span><span class="detail-acc-count" id="detail-capacity-text">0/0</span></summary>
+          <div id="detail-attendees" class="detail-acc-body detail-people"></div>
+        </details>
+
+        <details class="detail-acc" open>
+          <summary>紀錄與留言<span class="detail-acc-count"><span id="detail-history-count">0</span> 筆</span></summary>
+          <div id="detail-history-list" class="history-box" aria-live="polite"></div>
+          <div class="detail-compose">
+            <input id="detail-comment-input" class="line-input" type="text" maxlength="150" placeholder="寫留言…" aria-label="留言">
+            <button id="btn-detail-comment-send" class="line-btn btn-join" type="button">送出</button>
+          </div>
+          <div class="form-help" style="text-align:right;">最多 150 字 · 任何已登入成員都能留言</div>
+          <button id="btn-comment-event" type="button" hidden></button>
+        </details>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btn-detail-rsvp" class="line-btn btn-join" type="button">參加活動</button>
+        <button id="btn-delete-event" class="line-btn btn-delete" type="button" style="display:none;">刪除活動</button>
+        <button class="line-btn btn-detail" type="button" data-close="modal-detail">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 交棒主揪：從已報名名單選一個人，取代下拉選單 -->
+  <div id="modal-handoff" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="title-handoff">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span id="title-handoff" class="modal-title-text">交棒給誰？</span>
+        <button class="modal-close" data-close="modal-handoff" aria-label="關閉交棒視窗">✕</button>
+      </div>
+      <div class="modal-form-body" style="gap:10px; display:flex; flex-direction:column;">
+        <div class="form-help">只能選已報名的成員。交棒後你還在名單上，但不再是主揪。</div>
+        <div id="handoff-list" class="vote-copy-rows"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-handoff-confirm" class="line-btn btn-join" type="button" disabled>交棒</button>
+        <button class="line-btn btn-detail" type="button" data-close="modal-handoff">取消</button>
       </div>
     </div>
   </div>
@@ -2847,7 +3050,7 @@
     <div class="modal-box">
       <div class="modal-header">
         <span id="title-vote-detail" class="modal-title-text">投票詳情</span>
-        <button class="modal-close" data-close="modal-vote-detail" aria-label="關閉投票詳情視窗">關閉</button>
+        <button class="modal-close" data-close="modal-vote-detail" aria-label="關閉投票詳情視窗">✕</button>
       </div>
       <div class="modal-form-body" style="gap:12px; display:flex; flex-direction:column;">
         <div id="vote-detail-meta" class="form-help"></div>
@@ -2872,6 +3075,7 @@
   <div id="toast-notification" class="toast-notification" role="status" aria-live="polite">
     <span id="toast-text">活動資訊已自動複製
 請到群組中貼上分享</span>
+    <button id="toast-action" class="toast-action" type="button" hidden></button>
   </div>
 
   <!-- Minimal Modal: Auto-Copy Simplified Notification -->
@@ -2899,7 +3103,7 @@
     <div class="modal-box" style="height:auto; max-height:90vh; max-width:380px; border-radius:20px;">
       <div class="modal-header">
         <span id="title-admin-mode" class="modal-title-text">開啟管理員模式</span>
-        <button class="modal-close" data-close="modal-admin-mode" aria-label="關閉管理員模式視窗">關閉</button>
+        <button class="modal-close" data-close="modal-admin-mode" aria-label="關閉管理員模式視窗">✕</button>
       </div>
       <form id="form-admin-mode">
         <div class="modal-form-body" style="padding-bottom:18px;">
@@ -2921,7 +3125,7 @@
     <div class="modal-box">
       <div class="modal-header">
         <span id="title-dev-profile" class="modal-title-text">切換測試身分</span>
-        <button class="modal-close" data-close="modal-dev-profile" aria-label="關閉測試身分視窗">關閉</button>
+        <button class="modal-close" data-close="modal-dev-profile" aria-label="關閉測試身分視窗">✕</button>
       </div>
       <div class="modal-form-body">
         <p style="font-size:13px; color:#64748b; margin-bottom:10px;">
@@ -2952,7 +3156,7 @@
       "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec";
 
     const CONFIG = {
-      APP_VERSION: "v261111.1538", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
+      APP_VERSION: "v261111.1559", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
       LIFF_ID: SITE_SETUP.LIFF_ID || "",
       LIFF_URL: SITE_SETUP.LIFF_URL || "",
       GAS_API_URL: SITE_SETUP.GAS_API_URL || "",
@@ -3016,6 +3220,9 @@
     let voteTiePickerId = null;
     // 建立表單狀態：活動或投票；投票的類型、方式與選項列。
     let createMode = "event";
+    // 四選一的目前類型：event | fixed | wish | vote（createMode 只分 event/vote，固定團與許願仍走勾選框）。
+    let createType = "event";
+    let handoffSelectedUserId = "";
     let createVoteKind = "date";
     let createVoteMode = "single";
     let createVoteOptions = [];
@@ -3116,6 +3323,7 @@
       document.getElementById(`${prefix}-hour`).value = hourPart;
       document.getElementById(`${prefix}-minute`).value = minutePart;
       document.getElementById(`${prefix}-datetime`).value = snappedValue;
+      updateTimeDisplay(prefix);
     }
 
     function getDateTimePickerValue(prefix) {
@@ -3322,34 +3530,39 @@
         : window.location.href;
     }
 
+    // 標題列只剩一顆同步點；文字放進 title／aria-label，有問題時由 #sync-status-line 用字說。
     function updateSyncBadge(statusText, isDone = false) {
       setSyncStatusLine(statusText, isDone);
       const badgeEl = document.getElementById("login-badge");
       if (!badgeEl) return;
-      
-      badgeEl.innerText = statusText;
-      if (isDone) {
-        badgeEl.style.background = "var(--line-green-light)";
-        badgeEl.style.color = "var(--line-green-dark)";
-      } else {
-        badgeEl.style.background = "#f1f5f9";
-        badgeEl.style.color = "#64748b";
-      }
+      badgeEl.title = statusText;
+      badgeEl.setAttribute("aria-label", statusText);
+      badgeEl.classList.toggle("is-done", isDone);
+      badgeEl.classList.toggle("is-error", !isDone && /失敗/.test(statusText));
+      badgeEl.classList.toggle("is-wait", !isDone && !/失敗/.test(statusText) && /等待|重試|離線|同步中/.test(statusText));
     }
 
     let toastTimer = null;
-    function showToast(message = "活動資訊已自動複製\n請到群組中貼上分享") {
+    // 可選的動作鈕：showToast("已複製", { actionLabel: "查看文字", onAction })。有動作時多留 2 秒。
+    function showToast(message = "活動資訊已自動複製\n請到群組中貼上分享", options = {}) {
       const toastEl = document.getElementById("toast-notification");
       const textEl = document.getElementById("toast-text");
+      const actionEl = document.getElementById("toast-action");
       if (!toastEl || !textEl) return;
 
       textEl.innerText = message;
+      if (actionEl) {
+        const hasAction = Boolean(options.actionLabel && typeof options.onAction === "function");
+        actionEl.hidden = !hasAction;
+        actionEl.textContent = hasAction ? options.actionLabel : "";
+        actionEl.onclick = hasAction ? () => { toastEl.classList.remove("show"); options.onAction(); } : null;
+      }
       toastEl.classList.add("show");
 
       if (toastTimer) clearTimeout(toastTimer);
       toastTimer = setTimeout(() => {
         toastEl.classList.remove("show");
-      }, 2000); // 顯示 2 秒鐘
+      }, options.actionLabel ? 4000 : 2000);
     }
 
     function setSyncClockPrompt(status, messageText) {
@@ -3673,6 +3886,8 @@
       checkbox.disabled = !isSupported;
       control.title = isSupported ? "" : "請先將 GAS 表格更新為版本 2";
       if (labelText) labelText.textContent = isSupported ? "固定團" : "固定團（需更新）";
+      const typeBtn = document.getElementById("create-type-fixed");
+      if (typeBtn) { typeBtn.disabled = !isSupported; typeBtn.textContent = isSupported ? "固定團" : "固定團（需更新）"; }
       if (!isSupported) setCreateFixedMode(false);
       updateWishAvailability();
     }
@@ -3688,6 +3903,8 @@
       checkbox.disabled = !isSupported;
       control.title = isSupported ? "" : "請先將 GAS 表格更新為版本 4";
       if (labelText) labelText.textContent = isSupported ? "許願" : "許願（需更新）";
+      const typeBtn = document.getElementById("create-type-wish");
+      if (typeBtn) { typeBtn.disabled = !isSupported; typeBtn.textContent = isSupported ? "許願" : "許願（需更新）"; }
       if (!isSupported) setCreateWishMode(false);
     }
 
@@ -3830,11 +4047,17 @@
     function updateUserUI() {
       // 管理員入口隱藏在版本號上，不再顯示成一般按鈕。
       const versionBadge = document.getElementById("app-version-badge");
+      const avatar = document.getElementById("header-avatar");
+      const loginBtn = document.getElementById("btn-login-action");
       if (currentUser) {
         document.getElementById("current-name").innerText = currentUser.displayName +
           (currentUserCanDeleteAnyEvent ? "（管理員）" : "");
+        if (avatar) { avatar.src = getSafeImageUrl(currentUser.pictureUrl, currentUser.displayName); avatar.hidden = false; }
+        if (loginBtn) loginBtn.hidden = true;
       } else {
-        document.getElementById("current-name").innerText = "未登入成員";
+        document.getElementById("current-name").innerText = "未登入";
+        if (avatar) avatar.hidden = true;
+        if (loginBtn) loginBtn.hidden = false;
       }
       if (versionBadge) {
         versionBadge.classList.toggle("admin-active", currentUserCanDeleteAnyEvent);
@@ -4952,6 +5175,107 @@
       showToast("已重置全部打卡");
     }
 
+    // 詳情頂部的標籤：狀態＋（你已報名）
+    function getEventTagsHtml(evt) {
+      const ended = isEventEnded(evt);
+      const maxCap = getMaxAttendees(evt);
+      const attending = Boolean(currentUser) && (evt.attendees || []).some(u => String(u.userId) === String(currentUser.userId));
+      let cls = "tag-open", text = "揪團中";
+      if (isFixedGroup(evt)) { cls = "tag-fixed"; text = "固定團"; }
+      else if (ended) { cls = "tag-ended"; text = "已過期"; }
+      else if (isWishEvent(evt)) { cls = "tag-wish"; text = "許願中"; }
+      else if (maxCap > 0 && evt.attendees.length >= maxCap) { cls = "tag-full"; text = "揪團已滿"; }
+      const tags = [`<span class="tag-badge ${cls}">${text}</span>`];
+      if (isHighlightedEvent(evt)) tags.push(`<span class="tag-badge tag-promo">推廣中</span>`);
+      if (attending && !ended) tags.push(`<span class="tag-badge tag-mine">你已報名</span>`);
+      return tags.join("");
+    }
+
+    // 詳情底部的主要動作：與卡片上的按鈕同一套規則。
+    function renderDetailRsvpButton(evt) {
+      const btn = document.getElementById("btn-detail-rsvp");
+      if (!btn) return;
+      const fixed = isFixedGroup(evt);
+      const ended = isEventEnded(evt);
+      const maxCap = getMaxAttendees(evt);
+      const isFull = maxCap > 0 && evt.attendees.length >= maxCap;
+      const attending = Boolean(currentUser) && evt.attendees.some(u => String(u.userId) === String(currentUser.userId));
+      const host = isCurrentUserHost(evt);
+      btn.className = "line-btn btn-join";
+      btn.disabled = false;
+      btn.title = "";
+      if (host) { btn.textContent = "你是主揪 · 退出前請先交棒"; btn.disabled = true; btn.className = "line-btn"; btn.style.background = "#e2e8f0"; btn.style.color = "#64748b"; }
+      else if (!fixed && ended) { btn.textContent = "已過期"; btn.disabled = true; btn.className = "line-btn"; btn.style.background = "#e2e8f0"; btn.style.color = "#94a3b8"; }
+      else if (attending) { btn.textContent = fixed ? "本週取消" : "取消參加"; btn.className = "line-btn btn-cancel"; btn.style.background = ""; btn.style.color = ""; }
+      else if (isFull) { btn.textContent = fixed ? "人數已滿" : "揪團已滿"; btn.disabled = true; btn.className = "line-btn"; btn.style.background = "#e2e8f0"; btn.style.color = "#94a3b8"; }
+      else { btn.textContent = fixed ? "本週參與" : "參加活動"; btn.style.background = ""; btn.style.color = ""; }
+      btn.onclick = async () => {
+        await toggleRSVP(evt.id);
+        if (isDetailModalOpen() && activeEventId === evt.id && eventsData.some(item => item.id === evt.id)) openDetailModal(evt.id);
+      };
+    }
+
+    // 卡片左邊的日期塊：月／日／星期。固定團與投票沒有日期，放兩個字。
+    function renderDateBlock(evt) {
+      const ended = isEventEnded(evt);
+      if (isFixedGroup(evt)) return `<div class="date-block is-purple"><b class="is-text">固定</b><small>團</small></div>`;
+      const d = parseSafeDate(evt.datetime);
+      if (!evt.datetime || isNaN(d.getTime())) return `<div class="date-block is-gray"><b class="is-text">待定</b></div>`;
+      const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+      const attending = Boolean(currentUser) && (evt.attendees || []).some(u => String(u.userId) === String(currentUser.userId));
+      const cls = ended ? "is-gray" : (isWishEvent(evt) ? "is-pink" : (attending ? "is-green" : ""));
+      return `<div class="date-block ${cls}"><em>${d.getMonth() + 1}月</em><b>${d.getDate()}</b><small>週${weekdays[d.getDay()]}</small></div>`;
+    }
+
+    function getLocationLabel(locationValue) {
+      const location = normalizeLocation(locationValue);
+      if (!/^https?:\/\//i.test(location)) return location;
+      const cached = locationResolveCache.get(location);
+      if (cached && (cached.displayName || cached.location)) return String(cached.displayName || cached.location);
+      return getGoogleMapsLabelFromUrl(location) || "地圖位置";
+    }
+
+    function getEventMetaLine(evt) {
+      const parts = [];
+      if (isFixedGroup(evt)) parts.push(String(evt.fixedTimeText || "").trim() || "^_^//");
+      else if (evt.datetime) {
+        const d = parseSafeDate(evt.datetime);
+        if (!isNaN(d.getTime())) parts.push(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`);
+      }
+      parts.push(getLocationLabel(evt.location));
+      if (evt.fee && evt.fee !== "免費") parts.push(String(evt.fee));
+      return parts.join(" · ");
+    }
+
+    function renderAvatarStack(users, extraChip, size = "") {
+      const shown = (users || []).slice(0, 3);
+      return `<div class="avatar-stack ${size}">${shown.map(u => `<img src="${getSafeImageUrl(u.pictureUrl, u.displayName)}" alt="${escapeHtml(u.displayName || "")}">`).join("")}${extraChip ? `<span class="more">${escapeHtml(extraChip)}</span>` : ""}</div>`;
+    }
+
+    // 分享文字：卡片的「分享」與詳情的「分享活動」共用同一份。
+    function getEventShareText(evt) {
+      const formattedTime = getEventTimeText(evt);
+      const maxCapacity = getMaxAttendees(evt);
+      const capacityText = `${evt.attendees.length}${maxCapacity > 0 ? "/" + maxCapacity : ""} 人`;
+      const memberNames = evt.attendees.map(user => `@${user.displayName}`).join(" ") || "尚無";
+      return `【${isFixedGroup(evt) ? "固定團" : "活動"}：${evt.title}】
+時間：${formattedTime}
+地點：${normalizeLocation(evt.location)}
+費用：${evt.fee || "免費"}
+主揪：${evt.hostName || evt.hostUser?.displayName || "未指定"}
+人數：${capacityText}
+活動說明：${evt.description || "尚無補充說明"}
+${isFixedGroup(evt) ? "本週參與" : "已報名成員"}：${memberNames}
+
+點此線上報名：
+${getShareableUrl()}`;
+    }
+
+    function shareEventToClipboard(evt) {
+      safeCopyText(getEventShareText(evt));
+      showToast("已複製活動內容");
+    }
+
     function getSafeImageUrl(pictureUrl, displayName) {
       return getSafeHttpUrl(pictureUrl) ||
         `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(String(displayName || "Member"))}`;
@@ -4985,6 +5309,9 @@
         if (isWishEvent(evt)) return activeFilters.has("wish");
         return activeFilters.has("open");
       });
+
+      const countEl = document.getElementById("events-section-count");
+      if (countEl) countEl.textContent = `${filteredEvents.length} 個`;
 
       if (filteredEvents.length === 0) {
         listEl.innerHTML = `
@@ -5056,62 +5383,63 @@
 
         const commentHtml = `<button class="line-btn btn-calendar comment-action" type="button">活動留言</button>`;
 
+        // 已報名、未結束的一般活動用「已報名」黑標；許願、固定團、已滿、已過期維持原標。
+        const mineTag = isAttending && !isEnded && !fixedGroup && !wishEvent && !isFull;
+        const rowTagClass = highlightedEvent ? "tag-promo" : (mineTag ? "tag-mine" : tagClass);
+        const rowTagText = highlightedEvent ? "推廣中" : (mineTag ? "已報名" : tagText);
+        const stackChip = maxCap > 0 ? `${evt.attendees.length}/${maxCap}` : (evt.attendees.length > 3 ? `+${evt.attendees.length - 3}` : "");
+        const attendeeNames = evt.attendees.map(u => escapeHtml(u.displayName || "未命名")).join("、");
+
         cardEl.innerHTML = `
-          <!-- 第一層：折疊單行標頭 -->
-          <div class="card-summary-bar" onclick="toggleEventExpand('${evt.id}', event)">
-            <div class="card-summary-left">
-              <span class="event-time-chip">${escapeHtml(shortTimeText)}</span>
-              <span class="event-summary-title">${escapeHtml(evt.title)}</span>
+          <!-- 第一層：一列（日期塊｜標題＋資訊｜狀態） -->
+          <div class="card-summary-bar card-row" onclick="toggleEventExpand('${evt.id}', event)">
+            ${renderDateBlock(evt)}
+            <div class="card-main">
+              <div class="card-row-title">${escapeHtml(evt.title)}</div>
+              <div class="card-row-meta">${escapeHtml(getEventMetaLine(evt))}</div>
             </div>
-            <div class="card-summary-right">
-              <span class="tag-badge ${tagClass}">${tagText}</span>
-              <span class="expand-icon" aria-label="展開與收合">▼</span>
+            <div class="card-side">
+              <span class="tag-badge ${rowTagClass}">${rowTagText}</span>
+              ${evt.attendees.length ? renderAvatarStack(evt.attendees, stackChip) : ""}
             </div>
           </div>
 
-          <!-- 第二層：展開內容主體 -->
+          <!-- 第二層：展開內容 -->
           <div class="card-body-collapsible">
-            <div class="card-header">
-              <div class="card-title">${escapeHtml(evt.title)}</div>
+            <div class="card-kv">
+              <div><small>時間</small><b>${formattedTime}</b></div>
+              <div><small>費用</small><b>${escapeHtml(evt.fee || "免費")}</b></div>
+              <div class="wide"><small>地點</small><b class="event-location"></b></div>
+              <div><small>主揪</small><b>${escapeHtml(evt.hostName || evt.hostUser?.displayName || "無")}</b></div>
+              <div><small>人數</small><b style="color:var(--line-green-dark);">${evt.attendees.length}${maxCap > 0 ? ' / ' + maxCap : ''} 人</b></div>
             </div>
-            
-            <div class="card-info">
-              <div class="info-row"><span class="info-label">時間：</span><span>${formattedTime}</span></div>
-              <div class="info-row"><span class="info-label">地點：</span><span class="event-location"></span></div>
-              <div class="info-row"><span class="info-label">費用：</span><span>${escapeHtml(evt.fee || "免費")}</span></div>
-              <div class="info-row"><span class="info-label">主揪：</span><span>${escapeHtml(evt.hostName || evt.hostUser?.displayName || "無")}</span></div>
-              <div class="info-row">
-                <span class="info-label">人數：</span>
-                <span style="color:var(--line-green-dark); font-weight:bold;">${evt.attendees.length}${maxCap > 0 ? '/' + maxCap : ''} 人</span>
-              </div>
-            </div>
-
+            ${evt.description ? `<p class="card-desc">${escapeHtml(evt.description)}</p>` : ""}
             ${wishEvent ? `<div class="wish-status">${getWishStatusText(evt)}</div>` : ""}
 
-            <div class="card-actions ${fixedGroup ? "fixed-actions" : ""}">
-              ${actionButtonsHtml}
-              <button class="line-btn btn-detail detail-action">活動詳情</button>
-              ${commentHtml}
+            <div class="card-primary">${actionButtonsHtml}</div>
+            <div class="card-ghost-row">
+              <button class="line-btn detail-action" type="button">活動詳情</button>
+              <button class="line-btn comment-action" type="button">留言</button>
+              <button class="line-btn share-action" type="button">分享</button>
             </div>
 
             ${evt.attendees.length > 0 ? `
-              <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+              <div class="card-people">
+                ${renderAvatarStack(evt.attendees, evt.attendees.length > 3 ? `+${evt.attendees.length - 3}` : "", "lg")}
+                <span class="names" title="${attendeeNames}">${attendeeNames}</span>
+              </div>
+              ${canManageAttendees(evt) ? `
+              <div class="card-people-full">
                 ${evt.attendees.map(u => {
                   const uName = escapeHtml(u.displayName || "未命名");
                   const uPic = getSafeImageUrl(u.pictureUrl, u.displayName);
                   const isHostUser = String(u.userId) === String(evt.hostUser?.userId || "");
-                  const removeBtn = (canManageAttendees(evt) && !isHostUser)
+                  const removeBtn = !isHostUser
                     ? `<span class="btn-remove-attendee" title="移除成員" onclick="adminRemoveAttendee('${evt.id}', '${escapeHtml(u.userId)}', '${uName}', event)">✕</span>`
                     : "";
-                  return `
-                    <div class="attendee-pill" title="${uName}">
-                      <img src="${uPic}" alt="${uName}的頭像" />
-                      <span>${uName}</span>
-                      ${removeBtn}
-                    </div>
-                  `;
+                  return `<div class="attendee-pill" title="${uName}"><img src="${uPic}" alt="${uName}的頭像" /><span>${uName}</span>${removeBtn}</div>`;
                 }).join("")}
-              </div>
+              </div>` : ""}
             ` : ""}
           </div>
         `;
@@ -5121,6 +5449,7 @@
         if (rsvpButton) rsvpButton.onclick = () => toggleRSVP(evt.id);
         cardEl.querySelector(".detail-action").onclick = () => openDetailModal(evt.id);
         cardEl.querySelector(".comment-action").onclick = () => openCommentModal(evt.id);
+        cardEl.querySelector(".share-action").onclick = () => shareEventToClipboard(evt);
 
         listEl.appendChild(cardEl);
       });
@@ -5356,8 +5685,7 @@ ${pageUrl}`;
       renderEvents();
       closeModal("modal-create");
       document.getElementById("form-create-event").reset();
-      setCreateFixedMode(false);
-      setCreateWishMode(false);
+      setCreateType("event");
       resetCreateFromVote();
 
       triggerAutoCopyAndAlert(newEvent, "create");
@@ -5382,27 +5710,22 @@ ${pageUrl}`;
       setTimeout(() => input.focus(), 50);
     }
 
-    function submitComment() {
-      if (!ensureLoggedIn()) return;
-      const evt = eventsData.find(item => item.id === commentTargetEventId);
-      if (!evt) return;
-
-      const input = document.getElementById("comment-text");
-      const text = input.value.trim();
+    // 留言的共同路徑：留言視窗與詳情底下的輸入列都走這裡。回傳 true 代表已送出。
+    function postComment(evt, text) {
+      if (!evt) return false;
       if (!text) {
         alert("請先輸入留言內容。");
-        return;
+        return false;
       }
       if (text.length > MAX_COMMENT_LENGTH) {
         alert(`留言請控制在 ${MAX_COMMENT_LENGTH} 字以內。`);
-        return;
+        return false;
       }
 
       const snapshot = snapshotEventState(evt);
       const entry = addHistoryLog(evt, text, "comment");
       saveLocalEvents();
       renderEvents();
-      closeModal("modal-comment");
       if (isDetailModalOpen()) openDetailModal(evt.id);
       showToast("留言已送出");
 
@@ -5418,6 +5741,25 @@ ${pageUrl}`;
           rollbackEventState(snapshot, `留言送出失敗，已還原。\n\n${result.message}`);
         }
       });
+      return true;
+    }
+
+    function submitComment() {
+      if (!ensureLoggedIn()) return;
+      const evt = eventsData.find(item => item.id === commentTargetEventId);
+      const input = document.getElementById("comment-text");
+      if (postComment(evt, input.value.trim())) {
+        input.value = "";
+        closeModal("modal-comment");
+      }
+    }
+
+    function submitInlineComment() {
+      if (!ensureLoggedIn()) return;
+      const evt = eventsData.find(item => item.id === activeEventId);
+      const input = document.getElementById("detail-comment-input");
+      if (!input) return;
+      if (postComment(evt, input.value.trim())) input.value = "";
     }
 
     // --- 活動日曆檢視 ---
@@ -5745,7 +6087,8 @@ ${pageUrl}`;
       const canEdit = canCurrentUserEditEvent(evt);
       const canDelete = canCurrentUserDeleteEvent(evt);
 
-      document.getElementById("detail-title").innerText = evt.title;
+      document.getElementById("detail-hero-title").innerText = evt.title;
+      document.getElementById("detail-tags").innerHTML = getEventTagsHtml(evt);
       document.getElementById("detail-time").innerText = formattedTime;
       renderSafeLocation(document.getElementById("detail-location"), evt.location);
       document.getElementById("detail-fee").innerText = evt.fee || "免費";
@@ -5842,6 +6185,8 @@ ${pageUrl}`;
         document.getElementById("edit-max").value = evt.maxAttendees || 0;
         document.getElementById("edit-desc").value = evt.description || "";
         populateEditHostOptions(evt);
+        renderEditHostSummary(evt);
+        updateTimeDisplay("edit");
 
         openModal("modal-edit");
       };
@@ -5857,27 +6202,8 @@ ${pageUrl}`;
         showToast("已複製成員標記");
       };
 
-      // 完整活動內容分享。
-      document.getElementById("btn-share-event").onclick = () => {
-        const maxCapacity = getMaxAttendees(evt);
-        const capacityText = `${evt.attendees.length}${maxCapacity > 0 ? "/" + maxCapacity : ""} 人`;
-        const memberNames = evt.attendees.map(user => `@${user.displayName}`).join(" ") || "尚無";
-        const shareText =
-`【${isFixedGroup(evt) ? "固定團" : "活動"}：${evt.title}】
-時間：${formattedTime}
-地點：${normalizeLocation(evt.location)}
-費用：${evt.fee || "免費"}
-主揪：${evt.hostName || evt.hostUser?.displayName || "未指定"}
-人數：${capacityText}
-活動說明：${evt.description || "尚無補充說明"}
-${isFixedGroup(evt) ? "本週參與" : "已報名成員"}：${memberNames}
-
-點此線上報名：
-${getShareableUrl()}`;
-
-        safeCopyText(shareText);
-        showToast("已複製活動內容");
-      };
+      // 完整活動內容分享（與卡片上的「分享」同一份文字）。
+      document.getElementById("btn-share-event").onclick = () => shareEventToClipboard(evt);
 
       // 只在個人的 Google 日曆建立一筆行程，不寫入 GAS 或群組共用日曆。
       const personalCalendarBtn = document.getElementById("btn-add-personal-calendar");
@@ -5889,8 +6215,12 @@ ${getShareableUrl()}`;
         : "這個活動沒有可用的日期時間";
       personalCalendarBtn.onclick = () => openPersonalCalendarEvent(evt);
 
-      // 留言是活動紀錄的一部分，所以入口放在完整紀錄旁。
+      // 留言直接在紀錄底下寫；舊的入口按鈕保留但隱藏。
       document.getElementById("btn-comment-event").onclick = () => openCommentModal(evt.id);
+      document.getElementById("btn-detail-comment-send").onclick = submitInlineComment;
+      const inlineInput = document.getElementById("detail-comment-input");
+      inlineInput.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); submitInlineComment(); } };
+      renderDetailRsvpButton(evt);
 
       const highlightBtn = document.getElementById("btn-highlight-event");
       const highlightSupported = isDevMode || Number(serverSchemaVersion) >= 5;
@@ -5898,11 +6228,10 @@ ${getShareableUrl()}`;
       const highlightPending = processingHighlightEventIds.has(evt.id);
       highlightBtn.classList.toggle("is-active", highlighted);
       highlightBtn.disabled = highlightPending || !highlightSupported || !canEdit;
-      highlightBtn.innerText = highlightPending
-        ? "設定中..."
-        : (!highlightSupported
-          ? "加強推廣（需更新）"
-          : (highlighted ? "取消加強推廣" : "加強推廣"));
+      // 圖示鈕：只改文字標籤，不要用 innerText 蓋掉 svg。
+      highlightBtn.querySelector(".lbl").textContent = highlightPending
+        ? "設定中"
+        : (!highlightSupported ? "需更新" : (highlighted ? "取消推廣" : "推廣"));
       highlightBtn.title = !highlightSupported
         ? "請先更新 GAS 並執行 setupProject()"
         : (!canEdit ? "報名後即可設定加強推廣" : "全站同時最多三個活動");
@@ -6252,23 +6581,24 @@ ${getShareableUrl()}`;
         <p class="vote-hint">${myBallot ? `你上次送出：${escapeHtml(formatCheckinTime(myBallot.votedAt))}。截止前可以再改。` : "每個選項選一個答案，全部選好再按 送出。"}</p>` : "";
 
       const singleHint = !multi && !closed ? `<p class="vote-hint">${busy ? "送出中..." : "點選即投票，截止前可以更改。"}</p>` : "";
+      const leadingOption = winners.length === 1 ? (vote.options || []).find(o => o.id === winners[0]) : null;
+      const leadingText = leadingOption ? `${formatVoteOptionText(vote, leadingOption)} ${closed ? "最高票" : "領先"}` : (winners.length > 1 ? "同票" : "");
       const detailHtml = `<button type="button" class="line-btn btn-detail" data-vote-detail style="width:100%; min-height:44px; margin-top:10px;">查看回答</button>`;
       const closedHint = closed ? `<p class="vote-hint">結束 3 天後自動離開列表。</p>` : "";
       const endsText = formatDateTime(vote.endsAt);
 
       cardEl.innerHTML = `
-        <div class="card-summary-bar" data-toggle-vote>
-          <div class="card-summary-left">
-            <span class="event-time-chip">${escapeHtml(getVoteTimeLeftText(vote))}</span>
-            <span class="event-summary-title">${escapeHtml(vote.title)}</span>
+        <div class="card-summary-bar card-row" data-toggle-vote>
+          <div class="date-block ${closed ? "is-gray" : "is-blue"}"><b class="is-text">投票</b><small>${escapeHtml(getVoteTimeLeftText(vote))}</small></div>
+          <div class="card-main">
+            <div class="card-row-title">${escapeHtml(vote.title)}</div>
+            <div class="card-row-meta">${multi ? "多選" : "單選"} · ${voterCount} 人已投${leadingText ? ` · ${escapeHtml(leadingText)}` : ""}</div>
           </div>
-          <div class="card-summary-right">
+          <div class="card-side">
             <span class="tag-badge ${closed ? "tag-ended" : "tag-vote"}">${closed ? "已結束" : "投票中"}</span>
-            <span class="expand-icon" aria-label="展開與收合">▼</span>
           </div>
         </div>
         <div class="card-body-collapsible">
-          <div class="card-header"><div class="card-title">${escapeHtml(vote.title)}</div></div>
           <div class="card-info">
             <div class="info-row"><span class="info-label">發起人：</span><span>${escapeHtml(vote.creatorName || vote.creatorUser?.displayName || "無")}</span></div>
             <div class="info-row"><span class="info-label">截止：</span><span>${escapeHtml(endsText)}${closed ? "（已截止）" : ""}</span></div>
@@ -6542,9 +6872,7 @@ ${getShareableUrl()}`;
       voteTiePickerId = null;
 
       resetCreateVoteForm();
-      setCreateMode("event");
-      setCreateFixedMode(false);
-      setCreateWishMode(false);
+      setCreateType("event");
       document.getElementById("input-title").value = vote.title;
       document.getElementById("input-desc").value = "";
       if (vote.optionKind === "date") {
@@ -6597,15 +6925,13 @@ ${getShareableUrl()}`;
           if (select.value === "") select.selectedIndex = 0;
         }
       });
+      updateTimeDisplay(prefix);
     }
 
     // --- 建立投票表單 -----------------------------------------------------
     function setCreateMode(mode) {
       createMode = mode === "vote" && (votesSupported || isDevMode) ? "vote" : "event";
       const isVote = createMode === "vote";
-      document.querySelectorAll("[data-create-mode]").forEach(btn => {
-        btn.setAttribute("aria-pressed", String(btn.getAttribute("data-create-mode") === createMode));
-      });
       const eventFields = document.getElementById("create-event-fields");
       const voteFields = document.getElementById("create-vote-fields");
       eventFields.hidden = isVote;
@@ -6614,9 +6940,122 @@ ${getShareableUrl()}`;
       eventFields.querySelectorAll("input, select, textarea").forEach(el => { el.disabled = isVote; });
       voteFields.querySelectorAll("input, select, textarea").forEach(el => { el.disabled = !isVote; });
       if (!isVote) updateFixedGroupAvailability();
-      document.getElementById("title-create-event").textContent = isVote ? "發起投票" : "發起揪團";
-      document.getElementById("btn-create-submit").textContent = isVote ? "建立投票" : "發起揪團";
+      document.getElementById("title-create-event").textContent = "發起";
       if (isVote) renderCreateVoteOptions();
+    }
+
+    // 四選一：活動｜固定團｜許願｜投票。固定團與許願底下仍是舊的兩個勾選框。
+    function setCreateType(type) {
+      const next = ["event", "fixed", "wish", "vote"].includes(type) ? type : "event";
+      const supported = {
+        fixed: isDevMode || Number(serverSchemaVersion) >= 2,
+        wish: isDevMode || Number(serverSchemaVersion) >= 4,
+        vote: votesSupported || isDevMode
+      };
+      createType = (next !== "event" && supported[next] === false) ? "event" : next;
+      if (createType === "vote") {
+        setCreateMode("vote");
+      } else {
+        setCreateMode("event");
+        setCreateFixedMode(createType === "fixed");
+        setCreateWishMode(createType === "wish");
+      }
+      document.querySelectorAll("[data-create-type]").forEach(btn => {
+        btn.setAttribute("aria-pressed", String(btn.getAttribute("data-create-type") === createType));
+      });
+      const hints = {
+        event: "一般活動：有日期時間，開始 2 小時後自動標示已過期。",
+        fixed: "固定團：沒有日期，不會過期也不進日曆。每週用「本週參與」。",
+        wish: "許願：建立滿 3 天的午夜結算，報名超過 3 人才成團，否則自動刪除且不留檔。",
+        vote: "投票：讓大家選日期或選項，到期自動鎖定並標出最高票。"
+      };
+      const hint = document.getElementById("create-type-hint");
+      if (hint) hint.textContent = hints[createType];
+      const labels = { event: "發起揪團", fixed: "建立固定團", wish: "發起許願", vote: "建立投票" };
+      const submit = document.getElementById("btn-create-submit");
+      if (submit) submit.textContent = labels[createType];
+      const timeHelp = document.getElementById("create-time-help");
+      if (timeHelp) timeHelp.hidden = createType === "fixed";
+      updateTimeDisplay("input");
+    }
+
+    // --- 時間步進 ---------------------------------------------------------
+    // 時／分下拉保留（驗證與既有程式都讀它），畫面上用 − 19:00 + 操作，每格 15 分。
+    function updateTimeDisplay(prefix) {
+      const display = document.getElementById(`${prefix}-time-display`);
+      const hour = document.getElementById(`${prefix}-hour`);
+      const minute = document.getElementById(`${prefix}-minute`);
+      if (!display || !hour || !minute) return;
+      const empty = hour.value === "" || minute.value === "";
+      display.textContent = empty ? "選時間" : `${hour.value}:${minute.value}`;
+      display.classList.toggle("is-empty", empty);
+    }
+
+    function stepPickerTime(prefix, deltaMinutes) {
+      const hour = document.getElementById(`${prefix}-hour`);
+      const minute = document.getElementById(`${prefix}-minute`);
+      if (!hour || !minute) return;
+      // 從「選時間」開始步進就先給 19:00，再套用這一步。
+      let total = (hour.value === "" || minute.value === "") ? 19 * 60 : Number(hour.value) * 60 + Number(minute.value);
+      if (hour.value === "" || minute.value === "") setPickerPlaceholder(prefix, false);
+      total = ((total + deltaMinutes) % 1440 + 1440) % 1440;
+      total = Math.round(total / 15) * 15 % 1440;
+      hour.value = String(Math.floor(total / 60)).padStart(2, "0");
+      minute.value = String(total % 60).padStart(2, "0");
+      const datetime = document.getElementById(`${prefix}-datetime`);
+      const date = document.getElementById(`${prefix}-date`);
+      if (datetime && date && date.value) datetime.value = `${date.value}T${hour.value}:${minute.value}`;
+      updateTimeDisplay(prefix);
+    }
+
+    // --- 交棒名單 ---------------------------------------------------------
+    function renderEditHostSummary(evt) {
+      const hostUser = getEventHostUser(evt);
+      const nameEl = document.getElementById("edit-host-display");
+      const avatarEl = document.getElementById("edit-host-avatar");
+      const select = document.getElementById("edit-host-user");
+      const chosen = select ? [...select.options].find(o => o.value === select.value) : null;
+      const chosenUser = (evt.attendees || []).find(u => String(u.userId) === String(select?.value || "")) || hostUser;
+      if (nameEl) nameEl.textContent = chosen ? chosen.textContent : (hostUser?.displayName || "—");
+      if (avatarEl) avatarEl.src = getSafeImageUrl(chosenUser?.pictureUrl, chosenUser?.displayName || "");
+      const btn = document.getElementById("btn-open-handoff");
+      if (btn) btn.disabled = !select || select.disabled;
+    }
+
+    function openHandoffPicker() {
+      const evt = eventsData.find(item => item.id === activeEventId);
+      const select = document.getElementById("edit-host-user");
+      if (!evt || !select || select.disabled) return;
+      handoffSelectedUserId = select.value;
+      const listEl = document.getElementById("handoff-list");
+      listEl.innerHTML = [...select.options].map(option => {
+        const user = (evt.attendees || []).find(u => String(u.userId) === option.value) || getEventHostUser(evt) || {};
+        const isCurrent = String(getEventHostUser(evt)?.userId || "") === option.value;
+        return `
+          <button type="button" class="handoff-row" data-handoff-user="${escapeHtml(option.value)}" aria-pressed="${option.value === handoffSelectedUserId}">
+            <img src="${getSafeImageUrl(user.pictureUrl, user.displayName || option.textContent)}" alt="">
+            <div style="min-width:0;"><div class="nm">${escapeHtml(option.textContent)}</div><div class="sub">${isCurrent ? "目前主揪" : "已報名"}</div></div>
+            <span class="radio" aria-hidden="true"></span>
+          </button>`;
+      }).join("");
+      const confirmBtn = document.getElementById("btn-handoff-confirm");
+      const refresh = () => {
+        listEl.querySelectorAll("[data-handoff-user]").forEach(row => row.setAttribute("aria-pressed", String(row.getAttribute("data-handoff-user") === handoffSelectedUserId)));
+        const target = [...select.options].find(o => o.value === handoffSelectedUserId);
+        const isCurrent = String(getEventHostUser(evt)?.userId || "") === handoffSelectedUserId;
+        confirmBtn.disabled = !target || isCurrent;
+        confirmBtn.textContent = target && !isCurrent ? `交棒給 ${target.textContent}` : "交棒";
+      };
+      listEl.querySelectorAll("[data-handoff-user]").forEach(row => {
+        row.onclick = () => { handoffSelectedUserId = row.getAttribute("data-handoff-user"); refresh(); };
+      });
+      confirmBtn.onclick = () => {
+        select.value = handoffSelectedUserId;
+        renderEditHostSummary(evt);
+        closeModal("modal-handoff");
+      };
+      refresh();
+      openModal("modal-handoff");
     }
 
     function setCreateVoteKind(kind) {
@@ -6778,7 +7217,7 @@ ${getShareableUrl()}`;
       closeModal("modal-create");
       document.getElementById("form-create-event").reset();
       resetCreateVoteForm();
-      setCreateMode("event");
+      setCreateType("event");
       showToast("投票已建立");
     }
 
@@ -6981,14 +7420,22 @@ ${getShareableUrl()}`;
         setDateTimePickerValue("input", formatDateForInput(tomorrow, "19:00"));
         resetCreateFromVote();
         resetCreateVoteForm();
-        setCreateMode("event");
+        setCreateType("event");
         openModal("modal-create");
       };
 
-      // 建立表單：活動｜投票 切換、投票類型與方式、選項列。
-      document.querySelectorAll("[data-create-mode]").forEach(btn => {
-        btn.onclick = () => setCreateMode(btn.getAttribute("data-create-mode") || "event");
+      // 建立表單：四選一、投票類型與方式、選項列。
+      document.querySelectorAll("[data-create-type]").forEach(btn => {
+        btn.onclick = () => setCreateType(btn.getAttribute("data-create-type") || "event");
       });
+      // 時間步進：所有 .time-stepper 共用一個委派
+      document.addEventListener("click", (e) => {
+        const stepBtn = e.target.closest(".time-step");
+        if (!stepBtn) return;
+        const stepper = stepBtn.closest(".time-stepper");
+        if (stepper) stepPickerTime(stepper.getAttribute("data-prefix"), Number(stepBtn.getAttribute("data-step")) || 0);
+      });
+      document.getElementById("btn-open-handoff").onclick = openHandoffPicker;
       document.querySelectorAll("[data-vote-kind]").forEach(btn => {
         btn.onclick = () => setCreateVoteKind(btn.getAttribute("data-vote-kind") || "text");
       });

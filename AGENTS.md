@@ -217,6 +217,22 @@ Google Sheet 內有六張工作表：`Events`（目前顯示中的活動）、`E
 - 建立投票預設 **多選**（使用者決定）。
 - 本版沒有投票留言、也沒有編輯投票的 UI（GAS `saveVote` 已支援編輯，前端尚未接）。
 
+### 版面（2026-11 重新設計）
+
+- **底色** `--line-bg` 是淺灰藍 `#e9eef5`（原本的飽和藍 `#8cabd9` 已棄用），白卡與文字才好讀。
+- **標題列一列**：綠點＋「活動布告欄」＋版本膠囊（管理員入口仍在版本號上）｜右邊 `#header-me`：頭像＋名字＋同步點 `#login-badge`。同步點只換顏色（`is-done`／`is-wait`／`is-error`），文字放 `title`；有問題時由 `#sync-status-line` 用字說。舊的 `.user-status-bar` 與中間的 `.sync-clock-prompt` 用 CSS 隱藏，程式仍會寫它們，不要刪元素。
+- **首頁順序**：標題列 → 登入卡（平常隱藏）→ 同步狀態列（平常隱藏）→ 投票區 → 「活動」區標題 → 排序／宣傳／日曆圖示列 → 排序面板 → 載入卡（平常隱藏）→ 活動卡。投票區不受排序與分類影響。
+- **圖示列** `.nav-filters` 是 grid，`grid-auto-flow: column`，所以隱藏打卡後自動變三等分、拿掉 `hidden` 又變四等分。每顆 56px、圖示＋兩字。
+- **卡片一列三欄**（`.card-summary-bar.card-row`）：左 `.date-block`（月／日／星期；固定團「固定」、投票「投票」＋剩餘時間、無日期「待定」）、中標題＋一行資訊（時間 · 地點 · 費用）、右狀態標＋頭像疊加。**`.card-summary-bar` 這個 class 必須留著**，加強推廣的櫻花與許願的星空都掛在它上面；子元素要 `z-index: 1`。已報名且進行中的一般活動用黑色「已報名」標；推廣中用 `tag-promo`。
+- **展開內容**：`.card-kv` 兩欄小格、說明、一顆全寬主要動作（`.card-primary`）、三顆文字鈕（活動詳情／留言／分享，`.card-ghost-row`）、頭像疊加＋名字。管理員另外看到可移除的名單藥丸。分享文字由 `getEventShareText()` 產生，卡片與詳情共用。
+- **視窗一律是底部抽屜**：`.modal-box` 圓角頂 20px、`::before` 拉桿、`max-height: calc(100% - 28px)`；關閉鈕是 44px 圓形「✕」；`.modal-footer` 直排：主要動作在上、`.btn-detail` 當文字鈕、`.btn-delete` 在最下（用 CSS `order`，HTML 順序不用動）。
+- **發起表單四選一** `[data-create-type]`：活動｜固定團｜許願｜投票，`setCreateType()` 統一處理；底下仍是舊的兩個勾選框（`.legacy-type-toggles` 隱藏）與 `createMode`，程式其他地方照舊讀 `.checked`。表單分 基本／時間／細節 三張 `.form-section`。未就緒時對應按鈕 disabled 並加「（需更新）」。
+- **時間用步進** `.time-stepper`（− HH:MM +，每格 15 分）。時／分 `<select>` 保留在 `.offscreen-selects`（驗證與 `getDateTimePickerValue()` 都還讀它），步進只是改它們的值再呼叫 `updateTimeDisplay()`。從「選時間」（placeholder）步進會先給 19:00。不要把 select 拿掉。
+- **交棒**：編輯表單的主揪區顯示目前主揪＋「交棒給…」，開 `#modal-handoff` 名單選一個；`#edit-host-user` 下拉保留在 DOM（隱藏），選定後寫回它，送出邏輯不變。
+- **詳情**：頂部標籤＋大標題＋時間／地點／費用主揪三行；五顆圖示鈕（編輯／分享／標記／日曆／推廣，`.detail-iconrow`，改文字要改 `.lbl` 不要 `innerText` 蓋掉 svg）；三個 `<details>` 區塊（說明／名冊／紀錄與留言）；留言直接在紀錄底下的 `#detail-comment-input` 寫，`postComment()` 與留言視窗共用；底部 `#btn-detail-rsvp` 與卡片按鈕同一套規則，`#btn-delete-event` 在其下。舊的 `#btn-comment-event` 保留但隱藏。
+- **吐司**在底部，可帶一顆動作鈕：`showToast(msg, { actionLabel, onAction })`。
+- **日曆視窗**：嵌入區在中間，訂閱／瀏覽器開啟兩顆在 `.modal-footer`。
+
 ### 視窗、返回鍵與確認
 
 - **返回鍵／Android 手勢只關最上面的視窗，不離開頁面。** `openModal()` 每開一個視窗就 `history.pushState({ modal: id })` 並推進 `modalStack`；`popstate` 關最上面那個。用按鈕關閉時 `closeModal()` 會 `history.back()` 把自己那筆退掉，並用 `ignoreNextPopstate` 略過隨之而來的事件。首頁沒有視窗時再按返回才真的離開（LINE 內會關閉 LIFF 視窗，與以前相同）。
