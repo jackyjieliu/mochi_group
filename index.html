@@ -1217,18 +1217,7 @@
 
     .event-card { border-radius: 16px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06); }
 
-    /* 底部抽屜：圓角頂、拉桿、不再整頁白 */
-    .modal-box { height: auto; max-height: calc(100% - 28px); border-radius: 20px 20px 0 0; }
-    .modal-box::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 2px; background: #cbd5e1; margin: 8px auto 0 auto; flex: 0 0 auto; }
-    .confirm-sheet .modal-box::before { display: none; }
-    .modal-header { padding: 10px 12px 10px 18px; border-bottom: none; }
-    .modal-title-text { font-size: 17px; }
-    .modal-close { width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%; font-size: 18px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
-    .modal-footer { display: flex; flex-direction: column !important; gap: 6px !important; padding: 12px 18px 18px 18px; border-top: 1px solid #eef2f7; }
-    .modal-footer .line-btn { width: 100%; min-height: 48px !important; font-size: 15px; border-radius: 12px; flex: none !important; }
-    .modal-footer .btn-join, .modal-footer .btn-cancel { order: 1; }
-    .modal-footer .btn-detail { order: 2; background: transparent; color: #475569; min-height: 44px !important; }
-    .modal-footer .btn-delete { order: 3; background: transparent; color: #dc2626; border: 1px solid #fecaca; }
+    /* 底部抽屜的規則在樣式表最尾端（見「抽屜覆寫」），因為原本的 .modal-box 等規則寫在後面，同樣權重時後面的贏。 */
 
     .fab-btn { display: inline-flex; align-items: center; gap: 6px; height: 52px; padding: 0 20px 0 16px; border-radius: 26px; font-size: 16px; }
     .fab-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; }
@@ -1281,7 +1270,8 @@
     .card-primary { margin-top: 12px; }
     .card-primary .line-btn { width: 100%; min-height: 48px; font-size: 15px; border-radius: 12px; }
     .card-ghost-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin-top: 6px; }
-    .card-ghost-row .line-btn { background: transparent; color: #475569; min-height: 44px; border: none; font-size: 14px; }
+    .card-ghost-row .line-btn { background: #ffffff; color: #334155; min-height: 44px; border: 1px solid #d9e1ec; border-radius: 10px; font-size: 14px; }
+    .card-ghost-row .line-btn:active { background: #f1f5f9; }
     .card-people { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
     .card-people .names { font-size: 12px; color: #64748b; font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
     .card-people-full { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1289,7 +1279,6 @@
     /* 表單：四選一、分組卡、時間步進 */
     .create-mode-switch.is-four { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; }
     .create-mode-switch.is-four button { font-size: 14px; padding: 8px 4px; min-height: 40px; }
-    .modal-form-body { background: #f5f7fa; }
     .form-section { background: #ffffff; border-radius: 16px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05); }
     .form-section-title { margin: 0 0 10px 0; font-size: 12px; font-weight: 800; color: #64748b; letter-spacing: 0.04em; }
     .form-section .form-group:last-child { margin-bottom: 0; }
@@ -2485,6 +2474,36 @@
       background: var(--line-green-light);
       color: var(--line-green-dark);
     }
+
+    /* ==========================================================================
+       抽屜覆寫（必須放在樣式表最尾端）
+       原本的 .modal-box / .modal-header / .modal-form-body / .modal-footer 規則在上面；
+       同樣權重時後面的贏，所以重新設計的抽屜樣式一定要寫在這裡，不要搬到前面去。
+       ========================================================================== */
+    .modal-overlay { align-items: flex-end; }
+    .modal-box {
+      height: auto;
+      max-height: calc(100% - 28px);
+      border-radius: 20px 20px 0 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-box::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 2px; background: #cbd5e1; margin: 8px auto 0 auto; flex: 0 0 auto; }
+    .confirm-sheet .modal-box::before { display: none; }
+    @media (min-width: 600px) { .modal-box { border-radius: 20px; max-height: 85vh; } }
+    .modal-header { padding: 10px 12px 10px 18px; border-bottom: none; flex: 0 0 auto; }
+    .modal-title-text { font-size: 17px; }
+    .modal-close { width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%; font-size: 18px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+    .modal-form-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 18px 18px 18px; background: #f5f7fa; }
+    #modal-detail .modal-form-body, #modal-vote-detail .modal-form-body, #modal-handoff .modal-form-body, #modal-calendar .modal-form-body, #modal-comment .modal-form-body { background: #ffffff; }
+    .modal-footer { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; padding: 12px 18px max(18px, env(safe-area-inset-bottom)) 18px; border-top: 1px solid #eef2f7; background: #ffffff; }
+    .modal-footer .line-btn { width: 100%; min-height: 48px; font-size: 15px; border-radius: 12px; flex: none; }
+    .modal-footer .btn-join, .modal-footer .btn-cancel { order: 1; }
+    .modal-footer .btn-detail { order: 2; background: #ffffff; color: #475569; border: 1px solid #d9e1ec; min-height: 44px; }
+    .modal-footer .btn-delete { order: 3; background: transparent; color: #dc2626; border: 1px solid #fecaca; }
+    .modal-footer .form-help { order: 9; }
+    .confirm-sheet .modal-box { padding: 20px 18px max(24px, env(safe-area-inset-bottom)) 18px; gap: 12px; }
   </style>
 </head>
 <body>
@@ -2497,7 +2516,7 @@
         <h1 class="brand-title">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>活動布告欄</span>
-          <time id="app-version-badge" class="version-label" datetime="2026-11-11T16:25:44+08:00">v261111.1625</time>
+          <time id="app-version-badge" class="version-label" datetime="2026-11-11T16:30:29+08:00">v261111.1630</time>
         </h1>
         <div id="header-me" class="header-me">
           <img id="header-avatar" class="header-avatar" alt="" hidden>
@@ -3158,7 +3177,7 @@
       "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec";
 
     const CONFIG = {
-      APP_VERSION: "v261111.1625", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
+      APP_VERSION: "v261111.1630", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
       LIFF_ID: SITE_SETUP.LIFF_ID || "",
       LIFF_URL: SITE_SETUP.LIFF_URL || "",
       GAS_API_URL: SITE_SETUP.GAS_API_URL || "",
