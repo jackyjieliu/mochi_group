@@ -1266,7 +1266,10 @@
     .card-kv b { font-size: 14px; font-weight: 700; color: #0f172a; overflow-wrap: anywhere; }
     .card-kv .wide { grid-column: 1 / -1; }
     .card-kv .event-location a { color: #1d4ed8; font-weight: 700; }
-    .card-desc { margin: 10px 0 0 0; font-size: 14px; color: #334155; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+    /* 卡片上的說明最多 20 行；更長的在 活動詳情 看全文。展開區有 1200px 上限，不夾住會把下面的按鈕擠掉。 */
+    .card-desc { margin: 10px 0 0 0; font-size: 14px; color: #334155; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 20; overflow: hidden; }
+    .card-desc-more { display: inline-flex; align-items: center; min-height: 36px; margin-top: 2px; padding: 0 2px; border: none; background: transparent; color: #1d4ed8; font-family: var(--font-line); font-size: 13px; font-weight: 700; cursor: pointer; }
+    .card-desc-more[hidden] { display: none !important; }
     .card-primary { margin-top: 12px; }
     .card-primary .line-btn { width: 100%; min-height: 48px; font-size: 15px; border-radius: 12px; }
     .card-ghost-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin-top: 6px; }
@@ -2517,7 +2520,7 @@
         <h1 class="brand-title">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>活動布告欄</span>
-          <time id="app-version-badge" class="version-label" datetime="2026-11-11T16:47:43+08:00">v261111.1647</time>
+          <time id="app-version-badge" class="version-label" datetime="2026-11-11T16:55:49+08:00">v261111.1655</time>
         </h1>
         <div id="header-me" class="header-me">
           <img id="header-avatar" class="header-avatar" alt="" hidden>
@@ -3177,7 +3180,7 @@
       "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec";
 
     const CONFIG = {
-      APP_VERSION: "v261111.1647", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
+      APP_VERSION: "v261111.1655", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
       LIFF_ID: SITE_SETUP.LIFF_ID || "",
       LIFF_URL: SITE_SETUP.LIFF_URL || "",
       GAS_API_URL: SITE_SETUP.GAS_API_URL || "",
@@ -5434,7 +5437,7 @@ ${getShareableUrl()}`;
               <div><small>主揪</small><b>${escapeHtml(evt.hostName || evt.hostUser?.displayName || "無")}</b></div>
               <div><small>人數</small><b style="color:var(--line-green-dark);">${evt.attendees.length}${maxCap > 0 ? ' / ' + maxCap : ''} 人</b></div>
             </div>
-            ${evt.description ? `<p class="card-desc">${escapeHtml(evt.description)}</p>` : ""}
+            ${evt.description ? `<p class="card-desc">${escapeHtml(evt.description)}</p><button class="card-desc-more" type="button" hidden>顯示全部 ›</button>` : ""}
             ${wishEvent ? `<div class="wish-status">${getWishStatusText(evt)}</div>` : ""}
 
             <div class="card-primary">${actionButtonsHtml}</div>
@@ -5473,6 +5476,14 @@ ${getShareableUrl()}`;
         cardEl.querySelector(".share-action").onclick = () => shareEventToClipboard(evt);
 
         listEl.appendChild(cardEl);
+
+        // 說明被夾住（超過 20 行）才顯示「顯示全部」，點了直接進活動詳情看全文。
+        const descEl = cardEl.querySelector(".card-desc");
+        const moreBtn = cardEl.querySelector(".card-desc-more");
+        if (descEl && moreBtn && descEl.scrollHeight > descEl.clientHeight + 2) {
+          moreBtn.hidden = false;
+          moreBtn.onclick = () => openDetailModal(evt.id);
+        }
       });
     }
 
