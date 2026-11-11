@@ -1173,6 +1173,111 @@
       margin-bottom: 12px;
     }
 
+    /* 篩選列按鈕用 hidden 隱藏時要蓋過 display:flex，否則 UA 的 [hidden] 會輸。 */
+    .nav-action[hidden] { display: none; }
+
+    /* 登入卡：取代 ensureLoggedIn() 的瀏覽器 confirm()。同一張卡三種狀態，一次只出現一種。 */
+    .login-card {
+      background: #ffffff;
+      border: 2px solid var(--line-green);
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+    .login-card.is-failed { border-color: #fecaca; }
+    .login-card.is-connecting { border-color: #d9e1ec; }
+    .login-card.is-flash { animation: login-flash 0.9s ease; }
+    @keyframes login-flash {
+      0%, 100% { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08); }
+      30% { box-shadow: 0 0 0 6px rgba(6, 199, 85, 0.35); }
+    }
+    .login-card-row { display: flex; align-items: center; gap: 12px; }
+    .login-card-icon {
+      width: 44px; height: 44px; border-radius: 50%; flex: 0 0 auto;
+      background: var(--line-green-light); color: var(--line-green-dark);
+      display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900;
+    }
+    .login-card.is-failed .login-card-icon { background: #fee2e2; color: #dc2626; }
+    .login-card.is-connecting .login-card-icon {
+      background: transparent; border: 4px solid #d9e1ec; border-top-color: var(--line-green);
+      animation: login-spin 1s linear infinite;
+    }
+    @keyframes login-spin { to { transform: rotate(360deg); } }
+    .login-card-title { font-size: 16px; font-weight: 800; color: #0f172a; }
+    .login-card-text { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .login-card .line-btn { min-height: 48px; font-size: 15px; border-radius: 12px; }
+    .login-card.is-failed .line-btn.btn-join { background: #dc2626; }
+
+    /* 同步狀態列：只在等待或失敗時出現。正常時不佔空間。 */
+    .sync-status-line {
+      display: flex; align-items: center; gap: 8px;
+      background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412;
+      border-radius: 12px; padding: 8px 12px; margin-bottom: 10px;
+      font-size: 12px; font-weight: 700;
+    }
+    .sync-status-line.is-error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .sync-status-line i { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; flex: 0 0 auto; }
+    .sync-status-line.is-error i { background: #ef4444; }
+
+    /* 載入中：第一次開、沒有本機快取時顯示。 */
+    .loading-card {
+      background: #ffffff; border-radius: 16px; padding: 28px 16px; margin-bottom: 10px;
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+    .loading-spinner {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 4px solid #d9e1ec; border-top-color: var(--line-green);
+      animation: login-spin 1s linear infinite;
+    }
+    .loading-card b { font-size: 15px; color: #0f172a; }
+    .loading-card span { font-size: 12px; color: #64748b; text-align: center; }
+    @media (prefers-reduced-motion: reduce) {
+      .loading-spinner, .login-card.is-connecting .login-card-icon { animation: none; }
+      .login-card.is-flash { animation: none; }
+    }
+
+    /* 確認抽屜：取代瀏覽器 confirm()。 */
+    .confirm-sheet .modal-box { height: auto; border-radius: 20px 20px 0 0; padding: 20px 18px 24px 18px; gap: 12px; }
+    @media (min-width: 600px) { .confirm-sheet .modal-box { border-radius: 20px; } }
+    .confirm-handle { width: 40px; height: 4px; border-radius: 2px; background: #cbd5e1; margin: -8px auto 4px auto; }
+    .confirm-title { font-size: 18px; font-weight: 800; color: #0f172a; }
+    .confirm-text { font-size: 14px; color: #334155; line-height: 1.5; white-space: pre-line; }
+    .confirm-sheet .line-btn { min-height: 48px; font-size: 15px; border-radius: 12px; width: 100%; }
+    .confirm-sheet .btn-ghost { background: transparent; color: #475569; min-height: 44px; }
+
+    /* 投票詳情：一人一列、一個選項一欄 */
+    .vote-matrix-wrap { border: 1px solid var(--line-border); border-radius: 14px; overflow: auto; max-height: 46vh; }
+    .vote-matrix { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }
+    .vote-matrix th { position: sticky; top: 0; background: #f8fafc; font-size: 11px; font-weight: 800; color: #64748b; padding: 8px 6px; text-align: center; border-bottom: 1px solid #e2e8f0; white-space: nowrap; z-index: 1; }
+    .vote-matrix th:first-child, .vote-matrix td:first-child { text-align: left; position: sticky; left: 0; background: #ffffff; z-index: 2; min-width: 110px; }
+    .vote-matrix th:first-child { background: #f8fafc; z-index: 3; }
+    .vote-matrix td { padding: 6px; border-bottom: 1px solid #f1f5f9; text-align: center; }
+    .vote-matrix .vm-who { display: flex; align-items: center; gap: 6px; font-weight: 700; color: #0f172a; white-space: nowrap; }
+    .vote-matrix .vm-who img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+    .vm-mark { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; font-size: 12px; font-weight: 800; }
+    .vm-mark.y { background: var(--line-green-light); color: var(--line-green-dark); }
+    .vm-mark.n { background: #fee2e2; color: #b91c1c; }
+    .vm-mark.m { background: #fef3c7; color: #b45309; }
+    .vm-mark.z { background: #f1f5f9; color: #cbd5e1; }
+    .vote-matrix tr.vm-total td { background: #f8fafc; font-weight: 800; color: #0f172a; }
+    .vote-copy-rows { border: 1px solid var(--line-border); border-radius: 14px; overflow: hidden; }
+    .vote-copy-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 14px; min-height: 56px; border-bottom: 1px solid #f1f5f9; }
+    .vote-copy-row:last-child { border-bottom: none; }
+    .vote-copy-row .nm { font-size: 15px; font-weight: 700; color: #0f172a; }
+    .vote-copy-row .sub { font-size: 11px; color: #64748b; }
+
+    /* 活動紀錄裡的投票結果條目：藍色、系統寫入，不是留言。 */
+    .history-vote-result {
+      background: #dbeafe; border: 1px solid #bfdbfe; border-left: 4px solid #1d4ed8;
+      border-radius: 10px; padding: 10px 12px; margin: 8px 0; font-size: 13px; color: #1e3a8a; line-height: 1.6; white-space: pre-wrap;
+    }
+    .history-vote-result .history-vote-badge { display: inline-block; font-size: 11px; font-weight: 800; color: #ffffff; background: #1d4ed8; padding: 2px 6px; border-radius: 6px; margin-right: 6px; }
+
     /* 未完成設定的指引畫面：整頁取代 App，不讓人誤寫進別人的資料。 */
     .site-setup-notice {
       min-height: 100vh;
@@ -2208,7 +2313,7 @@
       <div class="header-top">
         <h1 class="brand-title">
           <span>群組活動布告欄</span>
-          <time id="app-version-badge" class="version-label" datetime="2026-11-11T13:40:27+08:00">v261111.1340</time>
+          <time id="app-version-badge" class="version-label" datetime="2026-11-11T15:27:49+08:00">v261111.1527</time>
         </h1>
         <span id="login-badge" class="sync-status-badge">同步中...</span>
       </div>
@@ -2222,6 +2327,21 @@
         <button id="btn-dev-toggle" class="dev-btn">測試切換身分</button>
       </div>
     </header>
+
+    <!-- 登入卡：未登入／連不上／連線中，三選一。平常隱藏。 -->
+    <section id="login-card" class="login-card" hidden aria-live="polite">
+      <div class="login-card-row">
+        <div id="login-card-icon" class="login-card-icon" aria-hidden="true">!</div>
+        <div style="min-width:0;">
+          <div id="login-card-title" class="login-card-title">還沒登入 LINE</div>
+          <div id="login-card-text" class="login-card-text">登入後才能報名、投票、發起活動、留言。</div>
+        </div>
+      </div>
+      <button id="login-card-button" class="line-btn btn-join" type="button">登入 LINE</button>
+    </section>
+
+    <!-- 同步狀態列：只在等待雲端確認或失敗時出現。 -->
+    <div id="sync-status-line" class="sync-status-line" hidden role="status"><i aria-hidden="true"></i><span id="sync-status-text"></span></div>
 
     <!-- Central Sync Clock Prompt Notice (中間時鐘提醒) -->
     <div id="sync-clock-notice" class="sync-clock-prompt">
@@ -2242,7 +2362,8 @@
     <nav class="nav-filters">
       <button id="btn-toggle-sort-panel" class="nav-action sort-toggle" type="button"
               aria-expanded="false" aria-controls="sort-panel"><span>排序</span></button>
-      <button id="btn-open-checkin" class="nav-action" type="button"><span>打卡</span></button>
+      <!-- 打卡先隱藏（使用者決定）。程式與 Members 表都保留，拿掉 hidden 就回來。 -->
+      <button id="btn-open-checkin" class="nav-action" type="button" hidden><span>打卡</span></button>
       <button id="btn-broadcast-all" class="nav-action" type="button"><span>宣傳</span></button>
       <button id="btn-open-calendar" class="nav-action" type="button"><span>日曆</span></button>
     </nav>
@@ -2267,6 +2388,13 @@
       </div>
 
       <button id="btn-refresh-data" class="line-btn btn-detail" type="button" style="width:100%;">重新整理</button>
+    </div>
+
+    <!-- 載入中：沒有本機快取且第一次同步還沒回來時顯示。 -->
+    <div id="loading-card" class="loading-card" hidden>
+      <div class="loading-spinner" role="status" aria-label="載入中"></div>
+      <b>正在連線雲端</b>
+      <span>抓最新的活動與投票。通常 1～3 秒，第一次開可能久一點。</span>
     </div>
 
     <!-- Event Cards Container -->
@@ -2496,8 +2624,8 @@
               <div>
                 <span class="form-label">投票方式</span>
                 <div class="vote-form-pills" role="group" aria-label="投票方式">
-                  <button type="button" data-vote-mode="single" aria-pressed="true">單選</button>
-                  <button type="button" data-vote-mode="multi" aria-pressed="false">多選</button>
+                  <button type="button" data-vote-mode="single" aria-pressed="false">單選</button>
+                  <button type="button" data-vote-mode="multi" aria-pressed="true">多選</button>
                 </div>
               </div>
             </div>
@@ -2694,6 +2822,43 @@
     </div>
   </div>
 
+  <!-- 確認抽屜：取代瀏覽器 confirm()。文字由 showConfirmSheet() 填。 -->
+  <div id="modal-confirm" class="modal-overlay confirm-sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="confirm-title">
+    <div class="modal-box">
+      <div class="confirm-handle" aria-hidden="true"></div>
+      <div id="confirm-title" class="confirm-title"></div>
+      <div id="confirm-text" class="confirm-text"></div>
+      <button id="confirm-ok" class="line-btn btn-join" type="button">確定</button>
+      <button id="confirm-cancel" class="line-btn btn-ghost" type="button">取消</button>
+    </div>
+  </div>
+
+  <!-- 投票詳情：每個人的回答，與各選項名單的複製 -->
+  <div id="modal-vote-detail" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="title-vote-detail">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span id="title-vote-detail" class="modal-title-text">投票詳情</span>
+        <button class="modal-close" data-close="modal-vote-detail" aria-label="關閉投票詳情視窗">關閉</button>
+      </div>
+      <div class="modal-form-body" style="gap:12px; display:flex; flex-direction:column;">
+        <div id="vote-detail-meta" class="form-help"></div>
+        <div class="detail-attendee-heading-row" style="font-weight:700; color:#475569; display:flex; justify-content:space-between; align-items:center;">
+          <span>每個人的回答</span><span class="form-help">左右滑動看全部選項</span>
+        </div>
+        <div class="vote-matrix-wrap"><table id="vote-detail-matrix" class="vote-matrix"></table></div>
+        <div id="vote-detail-legend" class="form-help"></div>
+        <div style="font-weight:700; color:#475569; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <span>複製各選項的名單</span><span id="vote-detail-copy-hint" class="form-help"></span>
+        </div>
+        <div id="vote-detail-copy-rows" class="vote-copy-rows"></div>
+      </div>
+      <div class="modal-footer" style="display:flex; flex-direction:column; gap:8px;">
+        <button id="btn-vote-copy-all" class="line-btn btn-detail" type="button" style="min-height:44px;">複製所有投票者 @</button>
+        <button id="btn-vote-copy-text" class="line-btn btn-calendar" type="button" style="min-height:44px;">複製結果文字</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Floating Toast Notification (自動消失吐司提示) -->
   <div id="toast-notification" class="toast-notification" role="status" aria-live="polite">
     <span id="toast-text">活動資訊已自動複製
@@ -2778,7 +2943,7 @@
       "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec";
 
     const CONFIG = {
-      APP_VERSION: "v261111.1340", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
+      APP_VERSION: "v261111.1527", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
       LIFF_ID: SITE_SETUP.LIFF_ID || "",
       LIFF_URL: SITE_SETUP.LIFF_URL || "",
       GAS_API_URL: SITE_SETUP.GAS_API_URL || "",
@@ -2847,6 +3012,14 @@
     let createVoteOptions = [];
     // 從投票建立活動時帶的來源 id；送出 saveEvent 時夾帶 fromVoteId。
     let createFromVoteId = null;
+    // 同票時使用者選的那一個選項，GAS 用它組「投票結果」紀錄。
+    let createFromVoteOptionId = null;
+    // 第一次同步是否已回來（成功或失敗）。沒本機快取時用來決定載入卡要不要顯示。
+    let initialSyncDone = false;
+    // 開著的視窗堆疊，給返回鍵用：每開一個就 pushState 一筆，popstate 關最上面那個。
+    const modalStack = [];
+    let ignoreNextPopstate = false;
+    let voteDetailVoteId = null;
 
     // 三個分類各自可獨立開關，預設全開。搬進排序面板後仍然是獨立開關，不是分頁。
     const activeFilters = new Set(["open", "fixed", "wish"]);
@@ -3141,6 +3314,7 @@
     }
 
     function updateSyncBadge(statusText, isDone = false) {
+      setSyncStatusLine(statusText, isDone);
       const badgeEl = document.getElementById("login-badge");
       if (!badgeEl) return;
       
@@ -3298,6 +3472,8 @@
         setTimeout(() => setSyncClockPrompt("hide"), 2400);
       } finally {
         clearTimeout(slowConnectionTimer);
+        initialSyncDone = true;
+        updateLoadingCard();
       }
     }
 
@@ -3590,6 +3766,7 @@
       if (!CONFIG.LIFF_ID || typeof liff === "undefined") {
         loginBtn.innerText = "登入服務未連線";
         loginBtn.onclick = () => initLIFF();
+        setLoginCardState("failed");
         updateUserUI();
         return;
       }
@@ -3597,6 +3774,7 @@
       try {
         loginBtn.innerText = "連線登入中...";
         loginBtn.disabled = true;
+        setLoginCardState("connecting");
         await Promise.race([
           liff.init({ liffId: CONFIG.LIFF_ID }),
           new Promise((_, reject) => setTimeout(() => reject(new Error("LIFF init timeout")), 6000))
@@ -3615,10 +3793,12 @@
           loginBtn.innerText = "已登入";
           loginBtn.style.borderColor = "var(--line-green)";
           loginBtn.onclick = null;
+          setLoginCardState("hidden");
         } else {
           localStorage.removeItem(CONFIG.USER_CACHE_KEY);
           loginBtn.innerText = "點此登入";
           loginBtn.onclick = () => liff.login();
+          setLoginCardState("logged-out");
 
           if (liff.isInClient()) {
             liff.login();
@@ -3631,6 +3811,7 @@
         loginBtn.disabled = false;
         loginBtn.innerText = "重新連線登入";
         loginBtn.onclick = () => initLIFF();
+        setLoginCardState("failed");
       }
 
       updateUserUI();
@@ -3750,21 +3931,17 @@
     function ensureLoggedIn() {
       if (isDevMode && isAuthVerified && currentUser) return true;
 
+      // 未登入不再跳瀏覽器 confirm()：捲到頂部的登入卡並閃一下，由那張卡負責登入或重連。
       if (!isAuthVerified || !currentUser) {
-        if (isLiffReady && typeof liff !== "undefined" && liff.isLoggedIn && !liff.isLoggedIn()) {
-          if (confirm("辦活動與報名參加需要連動 LINE 帳號，是否立即登入？")) {
-            liff.login();
-          }
-        } else {
-          alert("LINE 登入服務尚未連線，請稍後再試！");
-        }
+        const notLoggedIn = isLiffReady && typeof liff !== "undefined" && liff.isLoggedIn && !liff.isLoggedIn();
+        setLoginCardState(notLoggedIn ? "logged-out" : (isLiffReady ? "connecting" : "failed"));
+        focusLoginCard();
         return false;
       }
 
       if (typeof liff !== "undefined" && liff.isLoggedIn && !liff.isLoggedIn()) {
-        if (confirm("辦活動與報名參加需要連動 LINE 帳號，是否立即登入？")) {
-          liff.login();
-        }
+        setLoginCardState("logged-out");
+        focusLoginCard();
         return false;
       }
       return true;
@@ -4226,7 +4403,7 @@
       return currentUserCanDeleteAnyEvent || isCurrentUserHost(evt);
     }
 
-    function adminRemoveAttendee(eventId, targetUserId, targetUserName, event) {
+    async function adminRemoveAttendee(eventId, targetUserId, targetUserName, event) {
       if (event) event.stopPropagation();
       if (!ensureLoggedIn()) return;
 
@@ -4244,7 +4421,13 @@
         return;
       }
 
-      if (confirm(`確定要將成員「${targetUserName}」從活動「${evt.title}」的名單中移除嗎？`)) {
+      if (!(await showConfirmSheet({
+        title: `移除 ${targetUserName}？`,
+        text: `會從「${evt.title}」的名單中移除。對方之後可以自己再報名。`,
+        confirmLabel: "移除",
+        danger: true
+      }))) return;
+      {
         const snapshot = snapshotEventState(evt);
         evt.attendees = (evt.attendees || []).filter(u => String(u.userId) !== String(targetUserId));
 
@@ -4704,7 +4887,12 @@
 
     async function adminRemoveMember(targetUserId, displayName) {
       if (!currentUserCanDeleteAnyEvent) return;
-      if (!confirm(`確定要將「${displayName}」從打卡名單移除嗎？\n\n此操作不可復原，他要重新登記才會再出現。`)) return;
+      if (!(await showConfirmSheet({
+        title: `將 ${displayName} 移出打卡名單？`,
+        text: "此操作不可復原，他要重新登記才會再出現。",
+        confirmLabel: "移出名單",
+        danger: true
+      }))) return;
 
       const result = await sendPostToGAS(buildAdminCheckinPayload({
         action: "adminRemoveMember",
@@ -4732,7 +4920,12 @@
         alert("名單目前沒有成員。");
         return;
       }
-      if (!confirm(`確定要重置全部 ${total} 人的打卡嗎？\n\n所有人都會變回未打卡（仍留在名單上），需要你重新勾選。此操作不可復原。`)) return;
+      if (!(await showConfirmSheet({
+        title: `重置全部 ${total} 人的打卡？`,
+        text: "所有人都會變回未打卡（仍留在名單上），需要你重新勾選。此操作不可復原。",
+        confirmLabel: "重置全部",
+        danger: true
+      }))) return;
 
       const result = await sendPostToGAS(buildAdminCheckinPayload({ action: "adminResetCheckIns" }));
 
@@ -4759,6 +4952,7 @@
     function renderEvents() {
       // 投票區跟活動列表一起重繪，所有既有的 renderEvents() 呼叫點都自動帶到。
       renderVotes();
+      updateLoadingCard();
 
       const listEl = document.getElementById("event-list");
       listEl.innerHTML = "";
@@ -4965,7 +5159,7 @@ ${pageUrl}`;
     // --- 10. EXPORT ENDED EVENTS FUNCTION ---
 
     // --- 11. RSVP TOGGLE & COPIED NOTIFICATION ---
-    function toggleRSVP(eventId) {
+    async function toggleRSVP(eventId) {
       if (processingRSVPEventIds.has(eventId)) return;
       if (!ensureLoggedIn()) return;
 
@@ -4985,6 +5179,16 @@ ${pageUrl}`;
           alert("主揪無法直接取消參加，請先到編輯內容將主揪交棒給其他已報名成員。");
           return;
         }
+        // 退出以前是一點就走；誤觸會留下一筆退出紀錄，所以多一步確認。
+        const confirmed = await showConfirmSheet({
+          title: `取消參加「${evt.title}」？`,
+          text: "你會從名單移除，之後想參加可以再按一次。",
+          confirmLabel: isFixedGroup(evt) ? "本週取消" : "取消參加",
+          cancelLabel: "我還是要去",
+          danger: true
+        });
+        if (!confirmed) return;
+        if (processingRSVPEventIds.has(eventId)) return;
         evt.attendees.splice(existingIdx, 1);
         actionType = "cancel";
         addHistoryLog(evt, "退出活動", "leave");
@@ -5120,6 +5324,7 @@ ${pageUrl}`;
 
       // 從投票建立：夾帶 fromVoteId，GAS 會在同一把鎖裡把 linkedEventId 記回投票。
       const fromVoteId = createFromVoteId;
+      const fromVoteOptionId = createFromVoteOptionId;
       const sourceVote = fromVoteId ? votesData.find(item => item.id === fromVoteId) : null;
       if (fromVoteId) addHistoryLog(newEvent, "由投票結果建立", "create");
 
@@ -5127,7 +5332,7 @@ ${pageUrl}`;
       saveLocalEvents();
       // 投票建立成功後會從 doGet 消失，本機先拿掉，失敗再放回。
       if (sourceVote) votesData = votesData.filter(item => item.id !== fromVoteId);
-      sendPostToGAS({ action: "saveEvent", eventAction: "create", ...newEvent, fromVoteId: fromVoteId || "" })
+      sendPostToGAS({ action: "saveEvent", eventAction: "create", ...newEvent, fromVoteId: fromVoteId || "", fromVoteOptionId: fromVoteOptionId || "" })
         .then(result => {
           if (result.ok) return;
           // 建立失敗要把活動整筆移除，不能留下雲端沒有的幽靈活動。
@@ -5473,7 +5678,11 @@ ${pageUrl}`;
           alert("目前已有 3 個活動正在加強推廣，請先取消其中一個再試。");
           return;
         }
-      } else if (!confirm(`確定要取消「${evt.title}」的加強推廣嗎？`)) {
+      } else if (!(await showConfirmSheet({
+        title: `取消「${evt.title}」的加強推廣？`,
+        text: "標題列會變回一般樣式，名額會釋出給其他活動。",
+        confirmLabel: "取消推廣"
+      }))) {
         return;
       }
 
@@ -5581,6 +5790,15 @@ ${pageUrl}`;
       } else {
         historyEl.innerHTML = evt.history.map(log => {
           const isComment = String(log.type || "") === "comment";
+          if (String(log.type || "") === "vote_result") {
+            // GAS 寫入的投票結果：藍色系統條目，不是留言，不受 150 字限制。
+            return `
+              <div class="history-item history-vote-result">
+                <span class="history-vote-badge">投票結果</span><span class="history-meta">${escapeHtml(log.time || "")}</span>
+                <div style="margin-top:4px;">${escapeHtml(log.action)}</div>
+              </div>
+            `;
+          }
           if (isComment) {
             return `
               <div class="history-item history-comment">
@@ -5690,7 +5908,15 @@ ${getShareableUrl()}`;
             alert("只有目前主揪或管理員可以刪除活動！");
             return;
           }
-          if (confirm(`確定要刪除活動「${evt.title}」嗎？此操作不可複原。`)) {
+          const attendeeCount = (evt.attendees || []).length;
+          if (!(await showConfirmSheet({
+            title: `刪除「${evt.title}」？`,
+            text: `${attendeeCount} 位已報名的成員會看到活動消失。這個動作不能復原。`,
+            confirmLabel: "確定刪除",
+            cancelLabel: "保留活動",
+            danger: true
+          }))) return;
+          {
             const originalIndex = eventsData.findIndex(e => e.id === eventId);
             const deletedEvent = {
               ...evt,
@@ -5916,6 +6142,7 @@ ${getShareableUrl()}`;
 
       listEl.innerHTML = "";
       sorted.forEach(vote => listEl.appendChild(buildVoteCard(vote)));
+      if (voteDetailVoteId && modalStack.includes("modal-vote-detail")) renderVoteDetail();
     }
 
     function buildVoteCard(vote) {
@@ -6016,6 +6243,7 @@ ${getShareableUrl()}`;
         <p class="vote-hint">${myBallot ? `你上次送出：${escapeHtml(formatCheckinTime(myBallot.votedAt))}。截止前可以再改。` : "每個選項選一個答案，全部選好再按 送出。"}</p>` : "";
 
       const singleHint = !multi && !closed ? `<p class="vote-hint">${busy ? "送出中..." : "點選即投票，截止前可以更改。"}</p>` : "";
+      const detailHtml = `<button type="button" class="line-btn btn-detail" data-vote-detail style="width:100%; min-height:44px; margin-top:10px;">查看回答</button>`;
       const closedHint = closed ? `<p class="vote-hint">結束 3 天後自動離開列表。</p>` : "";
       const endsText = formatDateTime(vote.endsAt);
 
@@ -6039,7 +6267,7 @@ ${getShareableUrl()}`;
           </div>
           ${vote.description ? `<div class="vote-description">${escapeHtml(vote.description)}</div>` : ""}
           <div class="vote-options">${optionsHtml}</div>
-          ${singleHint}${submitHtml}${nextHtml}${manageHtml}${closedHint}
+          ${singleHint}${submitHtml}${detailHtml}${nextHtml}${manageHtml}${closedHint}
         </div>`;
 
       cardEl.querySelector("[data-toggle-vote]").onclick = () => toggleVoteExpand(vote.id);
@@ -6070,7 +6298,122 @@ ${getShareableUrl()}`;
       });
       const cancelTie = cardEl.querySelector("[data-cancel-tie-picker]");
       if (cancelTie) cancelTie.onclick = () => { voteTiePickerId = null; renderVotes(); };
+      const detailBtn = cardEl.querySelector("[data-vote-detail]");
+      if (detailBtn) detailBtn.onclick = () => openVoteDetail(vote.id);
       return cardEl;
+    }
+
+    // --- 投票詳情 ---------------------------------------------------------
+    // 一人一列、一個選項一欄。多選用 可／看／不 格子；單選一人一格。
+    // 每個選項一顆「複製 @」：多選複製回答「可以」的人，單選複製投這一項的人。
+    function getVoteOptionSupporters(vote, option, tally) {
+      const cell = tally[option.id];
+      if (!cell) return [];
+      return vote.selectMode === "multi" ? cell.yes : cell.voters;
+    }
+
+    function mentionList(ballots) {
+      return ballots.map(ballot => `@${ballot.displayName || "未命名"}`).join(" ");
+    }
+
+    function buildVoteResultText(vote) {
+      const { tally, winners } = getVoteTally(vote);
+      const multi = vote.selectMode === "multi";
+      const lines = [`【投票：${vote.title}】${isVoteClosed(vote) ? "已結束" : "進行中"}`];
+      (vote.options || []).forEach(option => {
+        const cell = tally[option.id];
+        const label = formatVoteOptionText(vote, option) + (winners.includes(option.id) ? "（最高票）" : "");
+        if (multi) {
+          lines.push(`${label}：可以 ${cell.yes.length} · 再看看 ${cell.maybe.length} · 不行 ${cell.no.length}`);
+          if (cell.yes.length) lines.push(`　可以：${mentionList(cell.yes)}`);
+        } else {
+          lines.push(`${label}：${cell.voters.length} 票${cell.voters.length ? " " + mentionList(cell.voters) : ""}`);
+        }
+      });
+      return lines.join("\n");
+    }
+
+    function openVoteDetail(voteId) {
+      const vote = votesData.find(item => item.id === voteId);
+      if (!vote) return;
+      voteDetailVoteId = voteId;
+      renderVoteDetail();
+      openModal("modal-vote-detail");
+    }
+
+    function renderVoteDetail() {
+      const vote = votesData.find(item => item.id === voteDetailVoteId);
+      if (!vote) { closeModal("modal-vote-detail"); return; }
+      const multi = vote.selectMode === "multi";
+      const closed = isVoteClosed(vote);
+      const { tally, winners, voterCount } = getVoteTally(vote);
+      const options = vote.options || [];
+      const ballots = (vote.ballots || []).slice().sort((a, b) => String(a.displayName || "").localeCompare(String(b.displayName || ""), "zh-Hant"));
+
+      document.getElementById("title-vote-detail").textContent = vote.title;
+      document.getElementById("vote-detail-meta").textContent =
+        `${closed ? "已結束" : "投票中"} · ${multi ? "多選" : "單選"} · ${voterCount} 人已投 · ${closed ? "截止" : "截止於"} ${formatDateTime(vote.endsAt)} · 由 ${vote.creatorName || vote.creatorUser?.displayName || "—"} 發起`;
+      document.getElementById("vote-detail-legend").textContent = multi
+        ? "可＝可以　看＝再看看　不＝不行　–＝沒回答"
+        : "✓＝投了這一項";
+      document.getElementById("vote-detail-copy-hint").textContent = multi ? "複製回答「可以」的人" : "複製投這一項的人";
+
+      const headCells = options.map(option => `<th>${escapeHtml(formatVoteOptionText(vote, option))}${winners.includes(option.id) && closed ? "<br><span style=\"color:#b45309\">最高票</span>" : ""}</th>`).join("");
+      const markFor = (ballot, option) => {
+        if (multi) {
+          const answer = ballot.choice && typeof ballot.choice === "object" ? ballot.choice[option.id] : "";
+          if (answer === "yes") return `<span class="vm-mark y">可</span>`;
+          if (answer === "maybe") return `<span class="vm-mark m">看</span>`;
+          if (answer === "no") return `<span class="vm-mark n">不</span>`;
+          return `<span class="vm-mark z">–</span>`;
+        }
+        return String(ballot.choice) === String(option.id) ? `<span class="vm-mark y">✓</span>` : `<span class="vm-mark z">–</span>`;
+      };
+      const bodyRows = ballots.map(ballot => `
+        <tr>
+          <td><span class="vm-who"><img src="${getSafeImageUrl(ballot.pictureUrl, ballot.displayName)}" alt="">${escapeHtml(ballot.displayName || "未命名")}</span></td>
+          ${options.map(option => `<td>${markFor(ballot, option)}</td>`).join("")}
+        </tr>`).join("");
+      const totalRow = `
+        <tr class="vm-total">
+          <td>${multi ? "可以 / 再看看 / 不行" : "票數"}</td>
+          ${options.map(option => {
+            const cell = tally[option.id];
+            return `<td>${multi ? `${cell.yes.length} / ${cell.maybe.length} / ${cell.no.length}` : `${cell.voters.length}`}</td>`;
+          }).join("")}
+        </tr>`;
+      document.getElementById("vote-detail-matrix").innerHTML = ballots.length
+        ? `<thead><tr><th>成員</th>${headCells}</tr></thead><tbody>${bodyRows}${totalRow}</tbody>`
+        : `<tbody><tr><td style="padding:16px; color:#64748b;">還沒有人投票</td></tr></tbody>`;
+
+      const rowsEl = document.getElementById("vote-detail-copy-rows");
+      rowsEl.innerHTML = options.map(option => {
+        const people = getVoteOptionSupporters(vote, option, tally);
+        const names = people.map(b => escapeHtml(b.displayName || "未命名")).join("、");
+        return `
+          <div class="vote-copy-row">
+            <div style="min-width:0;">
+              <div class="nm">${escapeHtml(formatVoteOptionText(vote, option))}</div>
+              <div class="sub">${people.length ? `${multi ? "可以" : "投給這項"} ${people.length} 人：${names}` : (multi ? "還沒有人回答可以" : "還沒有人投這一項")}</div>
+            </div>
+            <button type="button" class="line-btn ${people.length ? "btn-detail" : ""}" data-copy-option="${escapeHtml(option.id)}" ${people.length ? "" : 'disabled style="background:#e2e8f0; color:#94a3b8;"'}>複製 @ ${people.length}</button>
+          </div>`;
+      }).join("");
+      rowsEl.querySelectorAll("[data-copy-option]").forEach(btn => {
+        btn.onclick = () => {
+          const option = options.find(item => String(item.id) === btn.getAttribute("data-copy-option"));
+          const people = option ? getVoteOptionSupporters(vote, option, tally) : [];
+          if (!people.length) return;
+          safeCopyText(mentionList(people));
+          showToast(`已複製 ${people.length} 位成員的標記`);
+        };
+      });
+
+      const copyAllBtn = document.getElementById("btn-vote-copy-all");
+      copyAllBtn.textContent = `複製所有投票者 @（${ballots.length} 人）`;
+      copyAllBtn.disabled = ballots.length === 0;
+      copyAllBtn.onclick = () => { if (!ballots.length) return; safeCopyText(mentionList(ballots)); showToast(`已複製 ${ballots.length} 位投票者的標記`); };
+      document.getElementById("btn-vote-copy-text").onclick = () => { safeCopyText(buildVoteResultText(vote)); showToast("已複製投票結果"); };
     }
 
     async function castVote(voteId, choice) {
@@ -6122,7 +6465,11 @@ ${getShareableUrl()}`;
     async function closeVoteEarly(voteId) {
       const vote = votesData.find(item => item.id === voteId);
       if (!vote || !canManageVote(vote) || processingVoteIds.has(voteId)) return;
-      if (!confirm(`確定要提前結束「${vote.title}」？\n結束後不能再投票。`)) return;
+      if (!(await showConfirmSheet({
+        title: `提前結束「${vote.title}」？`,
+        text: "結束後不能再投票，會立刻標出最高票。",
+        confirmLabel: "提前結束"
+      }))) return;
       processingVoteIds.add(voteId);
       renderVotes();
       try {
@@ -6140,7 +6487,13 @@ ${getShareableUrl()}`;
     async function deleteVote(voteId) {
       const vote = votesData.find(item => item.id === voteId);
       if (!vote || !canManageVote(vote) || processingVoteIds.has(voteId)) return;
-      if (!confirm(`確定要刪除「${vote.title}」？\n投票與所有人的選擇都會消失。`)) return;
+      if (!(await showConfirmSheet({
+        title: `刪除「${vote.title}」？`,
+        text: "投票與所有人的選擇都會從列表消失。這個動作不能復原。",
+        confirmLabel: "確定刪除",
+        cancelLabel: "保留投票",
+        danger: true
+      }))) return;
       processingVoteIds.add(voteId);
       renderVotes();
       try {
@@ -6199,6 +6552,7 @@ ${getShareableUrl()}`;
       }
 
       createFromVoteId = voteId;
+      createFromVoteOptionId = optionId;
       const hint = document.getElementById("create-from-vote-hint");
       hint.textContent = `由投票「${vote.title}」的最高票建立：${formatVoteOptionText(vote, option)}`;
       hint.hidden = false;
@@ -6208,6 +6562,7 @@ ${getShareableUrl()}`;
 
     function resetCreateFromVote() {
       createFromVoteId = null;
+      createFromVoteOptionId = null;
       const hint = document.getElementById("create-from-vote-hint");
       if (hint) { hint.hidden = true; hint.textContent = ""; }
       setPickerPlaceholder("input", false);
@@ -6277,7 +6632,8 @@ ${getShareableUrl()}`;
     function resetCreateVoteForm() {
       createVoteOptions = [newCreateVoteOption(), newCreateVoteOption()];
       setCreateVoteKind("date");
-      setCreateVoteMode("single");
+      // 預設多選（使用者決定）：每個選項都可以回答 可以／不行／再看看。
+      setCreateVoteMode("multi");
       const endDefault = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
       setDateTimePickerValue("vote-end", formatDateForInput(endDefault, "21:00"));
       const title = document.getElementById("vote-title");
@@ -6417,20 +6773,146 @@ ${getShareableUrl()}`;
       showToast("投票已建立");
     }
 
+    // 返回鍵／Android 手勢：每開一個視窗就在 history 推一筆，返回就只關最上面那個視窗。
+    // 首頁沒有視窗時再按返回，才真的離開（LINE 內會關閉 LIFF 視窗，與以前相同）。
     function openModal(id) {
       const modal = document.getElementById(id);
+      if (!modal) return;
       modal.classList.add("active");
       modal.setAttribute("aria-hidden", "false");
+      if (!modalStack.includes(id)) {
+        modalStack.push(id);
+        try { history.pushState({ modal: id }, ""); } catch (ignore) {}
+      }
       const firstControl = modal.querySelector("button, input, textarea, a[href]");
       if (firstControl) setTimeout(() => firstControl.focus(), 0);
     }
 
-    function closeModal(id) {
+    function hideModalElement(id) {
       const modal = document.getElementById(id);
+      if (!modal) return;
       modal.classList.remove("active");
       modal.setAttribute("aria-hidden", "true");
       if (id === "modal-calendar") closeCalendarModal();
       if (id === "modal-create") resetCreateFromVote();
+      if (id === "modal-confirm") resolveConfirmSheet(false);
+      const index = modalStack.indexOf(id);
+      if (index >= 0) modalStack.splice(index, 1);
+    }
+
+    // 用按鈕關閉：先把自己那筆 history 退掉，popstate 事件再進來時要略過，不然會關到下一層。
+    function closeModal(id, options = {}) {
+      const wasOpen = modalStack.includes(id);
+      hideModalElement(id);
+      if (options.fromHistory || !wasOpen) return;
+      // 詳情→編輯這種「關一個馬上開一個」會讓目前的 history 項目不是自己；只要是視窗項目就退一步。
+      if (history.state && history.state.modal) {
+        ignoreNextPopstate = true;
+        try { history.back(); } catch (ignore) { ignoreNextPopstate = false; }
+      }
+    }
+
+    window.addEventListener("popstate", () => {
+      if (ignoreNextPopstate) { ignoreNextPopstate = false; return; }
+      if (modalStack.length === 0) return;
+      closeModal(modalStack[modalStack.length - 1], { fromHistory: true });
+    });
+
+    // --- 確認抽屜 ---------------------------------------------------------
+    // 取代瀏覽器的 confirm()：在 LINE 裡原生彈窗長得突兀也改不了文字樣式。
+    // 回傳 Promise<boolean>。同時只會有一個。
+    let confirmSheetResolve = null;
+    function showConfirmSheet({ title, text, confirmLabel = "確定", cancelLabel = "取消", danger = false }) {
+      resolveConfirmSheet(false);
+      document.getElementById("confirm-title").textContent = title || "";
+      document.getElementById("confirm-text").textContent = text || "";
+      const okBtn = document.getElementById("confirm-ok");
+      const cancelBtn = document.getElementById("confirm-cancel");
+      okBtn.textContent = confirmLabel;
+      cancelBtn.textContent = cancelLabel;
+      okBtn.className = `line-btn ${danger ? "btn-cancel" : "btn-join"}`;
+      return new Promise(resolve => {
+        confirmSheetResolve = resolve;
+        okBtn.onclick = () => { const r = confirmSheetResolve; confirmSheetResolve = null; closeModal("modal-confirm"); if (r) r(true); };
+        cancelBtn.onclick = () => closeModal("modal-confirm");
+        openModal("modal-confirm");
+      });
+    }
+    function resolveConfirmSheet(value) {
+      if (!confirmSheetResolve) return;
+      const r = confirmSheetResolve;
+      confirmSheetResolve = null;
+      r(value);
+    }
+
+    // --- 登入卡 -----------------------------------------------------------
+    // 三種狀態只會出現一種：未登入 → 登入 LINE；SDK 連不上 → 重新連線；連線中 → 轉圈不給按。
+    function setLoginCardState(state) {
+      const card = document.getElementById("login-card");
+      if (!card) return;
+      const title = document.getElementById("login-card-title");
+      const text = document.getElementById("login-card-text");
+      const icon = document.getElementById("login-card-icon");
+      const button = document.getElementById("login-card-button");
+      card.classList.remove("is-failed", "is-connecting");
+      if (state === "hidden" || isDevMode) { card.hidden = true; return; }
+      card.hidden = false;
+      button.hidden = false;
+      button.disabled = false;
+      if (state === "connecting") {
+        card.classList.add("is-connecting");
+        icon.textContent = "";
+        title.textContent = "連線 LINE 登入中…";
+        text.textContent = "在 LINE 裡打開時會自動登入，通常幾秒內完成。";
+        button.hidden = true;
+      } else if (state === "failed") {
+        card.classList.add("is-failed");
+        icon.textContent = "!";
+        title.textContent = "無法連到 LINE 登入服務";
+        text.textContent = "網路不穩或連線逾時。按一下重試。";
+        button.textContent = "重新連線";
+        button.onclick = () => initLIFF();
+      } else {
+        icon.textContent = "LINE";
+        icon.style.fontSize = "11px";
+        title.textContent = "還沒登入 LINE";
+        text.textContent = "登入後才能報名、投票、發起活動、留言。";
+        button.textContent = "登入 LINE";
+        button.onclick = () => { if (typeof liff !== "undefined" && isLiffReady) liff.login(); else initLIFF(); };
+      }
+    }
+
+    // 需要身分的動作在未登入時呼叫：捲到登入卡並閃一下，不再跳 confirm()。
+    function focusLoginCard() {
+      const card = document.getElementById("login-card");
+      if (!card || card.hidden) return;
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      card.classList.remove("is-flash");
+      void card.offsetWidth;
+      card.classList.add("is-flash");
+      showToast("請先登入 LINE");
+    }
+
+    // --- 同步狀態列 -------------------------------------------------------
+    // 只在等待或失敗時出現；成功時收起來，只剩頭像旁的狀態字。
+    function setSyncStatusLine(statusText, isDone) {
+      const line = document.getElementById("sync-status-line");
+      const text = document.getElementById("sync-status-text");
+      if (!line || !text) return;
+      const isError = /失敗/.test(statusText);
+      const isWaiting = /等待|重試|離線/.test(statusText);
+      if (isDone || (!isError && !isWaiting)) { line.hidden = true; return; }
+      line.hidden = false;
+      line.classList.toggle("is-error", isError);
+      text.textContent = isError
+        ? `${statusText}。畫面已還原，請再試一次。`
+        : `${statusText} · 會自動重試，不用重新整理。`;
+    }
+
+    function updateLoadingCard() {
+      const card = document.getElementById("loading-card");
+      if (!card) return;
+      card.hidden = initialSyncDone || eventsData.length > 0 || votesData.length > 0;
     }
 
     // --- 17. DEV PROFILES ---

@@ -212,7 +212,19 @@ Google Sheet 內有六張工作表：`Events`（目前顯示中的活動）、`E
 - 資料上限：選項 ≤ `MAX_VOTE_OPTIONS`（10）、選項文字 ≤ 40 字、標題 ≤ 60、說明 ≤ 300、選票 ≤ `MAX_VOTE_BALLOTS`（500）、`history` ≤ 50。`castVote_` 是由未驗證輸入新增項目的路徑，上限不可移除。
 - 刪除投票是軟刪除，列由每日歸檔搬走，與活動同一條規則。
 - 投票不碰 Google 日曆；只有從投票建立出來的活動走正常同步。
+- **投票詳情**（`#modal-vote-detail`，由每張投票卡的「查看回答」開啟）：一人一列、一個選項一欄；多選用 可／看／不 格子。每個選項一顆「複製 @」：多選複製回答「可以」的人，單選複製投這一項的人；另有複製全部投票者與複製結果文字。任何已登入成員都能看，因為名字本來就公開在卡片上。
+- **從投票建立活動時，GAS 把投票結果寫進活動 `history`**：`buildVoteResultHistoryEntry_()` 在 `saveEvent_` 同一把鎖裡組字（最高票、各答案的 @名字、其他選項票數），`type: "vote_result"`、作者「系統」。它不是留言，不受 `MAX_COMMENT_LENGTH` 限制；名字超過 60 個只列前 60 個。前端用 `.history-vote-result` 藍色條目顯示。前端送 `fromVoteOptionId`（同票時使用者選的那一個），不合法就退回計票的第一個最高票。
+- 建立投票預設 **多選**（使用者決定）。
 - 本版沒有投票留言、也沒有編輯投票的 UI（GAS `saveVote` 已支援編輯，前端尚未接）。
+
+### 視窗、返回鍵與確認
+
+- **返回鍵／Android 手勢只關最上面的視窗，不離開頁面。** `openModal()` 每開一個視窗就 `history.pushState({ modal: id })` 並推進 `modalStack`；`popstate` 關最上面那個。用按鈕關閉時 `closeModal()` 會 `history.back()` 把自己那筆退掉，並用 `ignoreNextPopstate` 略過隨之而來的事件。首頁沒有視窗時再按返回才真的離開（LINE 內會關閉 LIFF 視窗，與以前相同）。
+- **不要再用瀏覽器 `confirm()` / `alert()` 做確認。** 一律用 `showConfirmSheet({ title, text, confirmLabel, cancelLabel, danger })`，回傳 `Promise<boolean>`，呼叫端必須是 async。目前用在：取消參加（新增的保護，以前一點就退）、刪除活動、移除成員、取消加強推廣、提前結束投票、刪除投票、打卡名單的管理操作。文案由使用者定稿：刪除活動「N 位已報名的成員會看到活動消失。這個動作不能復原。」、取消參加「你會從名單移除，之後想參加可以再按一次。」
+- **未登入不再跳 `confirm()`。** `ensureLoggedIn()` 改成 `setLoginCardState()` + `focusLoginCard()`：捲到頂部的 `#login-card` 並閃一下。登入卡只有一顆按鈕，文字隨狀態切換：未登入「登入 LINE」、SDK 連不上「重新連線」、連線中轉圈不給按。三種只會出現一種。dev 模式永遠隱藏。
+- **同步狀態列 `#sync-status-line` 只在等待或失敗時出現**（`updateSyncBadge()` 內的 `setSyncStatusLine()` 判斷文字含 等待／重試／離線／失敗）。正常時不佔空間。
+- **載入卡 `#loading-card`** 只在「沒有本機快取且第一次同步還沒回來」時出現（`updateLoadingCard()` 看 `initialSyncDone` 與資料長度）。有快取時先顯示舊資料，不出現。
+- **打卡入口先隱藏**（使用者決定）：`#btn-open-checkin` 加了 `hidden`，`.nav-action[hidden]` 要蓋過 `display:flex`。程式、`Members` 表與 GAS action 全部保留，拿掉 `hidden` 就回來。篩選列因此是三顆：排序／宣傳／日曆。
 
 ### Google 日曆
 
@@ -255,7 +267,7 @@ Google Sheet 內有六張工作表：`Events`（目前顯示中的活動）、`E
 
 **畫面上有三組不同的 pill 共用 `.tab-btn` 樣式**：排序（`[data-event-sort]`，單選）、分類（`[data-filter]`，多選）、打卡視窗的狀態篩選（`[data-checkin-filter]`，單選）。綁定事件時**一律用 data 屬性選取，絕對不要用 `.tab-btn`**——用了就會把三組綁在一起，主畫面篩選當場壞掉。
 
-篩選列是四顆等寬按鈕（`.nav-action`，`flex: 1 1 0`）填滿整列：**排序／打卡／宣傳／日曆**。配色沿用專案既有的「淺色底 + 飽和文字」慣例（同 `.btn-edit`／`.btn-calendar`／`.btn-delete`）：排序石板灰、打卡藍、宣傳橘、日曆紫；排序展開時整顆反白成深石板色。四顆文字都必須是兩個字，變長會把整列擠壞——所以打卡在後端未就緒時只改 `disabled` 與 `title`，不改文字。
+篩選列是等寬按鈕（`.nav-action`，`flex: 1 1 0`）填滿整列：**排序／打卡／宣傳／日曆**，其中打卡目前以 `hidden` 隱藏，所以畫面上是三顆。配色沿用專案既有的「淺色底 + 飽和文字」慣例（同 `.btn-edit`／`.btn-calendar`／`.btn-delete`）：排序石板灰、打卡藍、宣傳橘、日曆紫；排序展開時整顆反白成深石板色。四顆文字都必須是兩個字，變長會把整列擠壞——所以打卡在後端未就緒時只改 `disabled` 與 `title`，不改文字。
 
 **右下角浮動按鈕只留「揪團」一顆。** 曾經放到四顆，遮掉手機約四分之一的螢幕高度；次要入口一律放篩選列，不要再往 FAB 加。
 

@@ -790,6 +790,15 @@ function saveEvent_(eventsSheet, auditSheet, payload, spreadsheet) {
     normalizedEvent.attendees = normalizeUsers_([creatingHost].concat(normalizedEvent.attendees || []));
   }
 
+  // 從投票建立：把結果（最高票與各答案的 @名字）寫進活動紀錄。
+  // 由 GAS 依選票組文字，不採用前端送來的內容；type 是 vote_result 不是 comment，不受留言字數限制。
+  if (linkedVote) {
+    normalizedEvent.history = mergeHistoryEntries_(
+      normalizedEvent.history,
+      buildVoteResultHistoryEntry_(linkedVote.vote, payload.fromVoteOptionId)
+    );
+  }
+
   normalizedEvent.id = eventId;
   normalizedEvent.status = APP_CONFIG.STATUS_ACTIVE;
   normalizedEvent.deleted = false;
@@ -2842,4 +2851,108 @@ function archiveRetiredVotes_(spreadsheet) {
     .setValues(alignedRows);
   retiredRowNumbers.slice().reverse().forEach(rowNumber => votesSheet.deleteRow(rowNumber));
   return retiredRows.length;
+}
+
+/* ==========================================================================
+   投票結果寫進活動紀錄
+   ========================================================================== */
+
+/** 選項顯示文字。日期選項轉成「MM/dd (週X) HH:mm」，整天不帶時間。 */
+function formatVoteOptionText_(vote, option) {
+  if (!option) return "";
+  if (String(vote.optionKind) !== "date") return String(option.label || "");
+  const date = String(option.date || "");
+  const parsed = new Date(date + "T00:00:00");
+  if (isNaN(parsed.getTime())) return date + (option.time ? " " + option.time : "");
+  const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+  const text = Utilities.formatDate(parsed, Session.getScriptTimeZone(), "M/d") +
+    " (" + weekdays[parsed.getDay()] + ")";
+  return option.time ? text + " " + option.time : text;
+}
+
+/**
+ * 計票，與前端 getVoteTally() 同一條規則。
+ * 單選：每選項的投票者。多選：每選項 yes/no/maybe 各自的人。
+ */
+function tallyVote_(vote) {
+  const multi = String(vote.selectMode) === "multi";
+  const tally = {};
+  (vote.options || []).forEach(option => {
+    tally[option.id] = multi ? { yes: [], no: [], maybe: [] } : { voters: [] };
+  });
+  normalizeBallots_(vote.ballots).forEach(ballot => {
+    if (multi) {
+      const choice = ballot.choice && typeof ballot.choice === "object" ? ballot.choice : {};
+      Object.keys(choice).forEach(optionId => {
+        const answer = String(choice[optionId]);
+        if (tally[optionId] && tally[optionId][answer]) tally[optionId][answer].push(ballot);
+      });
+    } else if (tally[String(ballot.choice || "")]) {
+      tally[String(ballot.choice)].voters.push(ballot);
+    }
+  });
+  const score = optionId => multi
+    ? tally[optionId].yes.length * 1000 + tally[optionId].maybe.length
+    : tally[optionId].voters.length;
+  let best = 0;
+  (vote.options || []).forEach(option => { best = Math.max(best, score(option.id)); });
+  const winners = best > 0
+    ? (vote.options || []).filter(option => score(option.id) === best).map(option => option.id)
+    : [];
+  return { multi: multi, tally: tally, winners: winners };
+}
+
+/** 把一串選票變成「@名字 @名字」。超過上限只列前面幾個，避免紀錄爆長。 */
+function joinMentions_(ballots) {
+  const MAX_NAMES = 60;
+  const names = ballots.map(ballot => "@" + String(ballot.displayName || "未命名"));
+  if (names.length <= MAX_NAMES) return names.join(" ") || "（無）";
+  return names.slice(0, MAX_NAMES).join(" ") + " …等 " + names.length + " 人";
+}
+
+/**
+ * 組「投票結果」的歷史條目。chosenOptionId 是前端在同票時選的那一個；
+ * 不合法就退回計票的第一個最高票。
+ */
+function buildVoteResultHistoryEntry_(vote, chosenOptionId) {
+  const result = tallyVote_(vote);
+  const optionIds = (vote.options || []).map(option => String(option.id));
+  let winnerId = String(chosenOptionId || "");
+  if (!optionIds.includes(winnerId)) winnerId = result.winners[0] || "";
+  const winner = (vote.options || []).find(option => String(option.id) === winnerId) || null;
+
+  const lines = [];
+  const counts = winner ? result.tally[winner.id] : null;
+  if (!winner) {
+    lines.push("投票「" + vote.title + "」已結束，沒有人投票。");
+  } else if (result.multi) {
+    lines.push("投票「" + vote.title + "」已結束，最高票：" + formatVoteOptionText_(vote, winner) +
+      "（可以 " + counts.yes.length + "）");
+    lines.push("可以：" + joinMentions_(counts.yes));
+    if (counts.maybe.length) lines.push("再看看：" + joinMentions_(counts.maybe));
+    if (counts.no.length) lines.push("不行：" + joinMentions_(counts.no));
+  } else {
+    lines.push("投票「" + vote.title + "」已結束，最高票：" + formatVoteOptionText_(vote, winner) +
+      "（" + counts.voters.length + " 票）");
+    lines.push("投給這項：" + joinMentions_(counts.voters));
+  }
+  const others = (vote.options || [])
+    .filter(option => !winner || String(option.id) !== String(winner.id))
+    .map(option => {
+      const c = result.tally[option.id];
+      return formatVoteOptionText_(vote, option) + (result.multi ? " 可以 " + c.yes.length : " " + c.voters.length + " 票");
+    });
+  if (others.length) lines.push("其他選項：" + others.join("／"));
+
+  const now = new Date();
+  return {
+    id: "log_" + now.getTime() + "_voteresult",
+    author: "系統",
+    authorUserId: "",
+    time: Utilities.formatDate(now, Session.getScriptTimeZone(), "MM/dd HH:mm"),
+    timestamp: now.toISOString(),
+    type: "vote_result",
+    action: lines.join("\n"),
+    voteId: String(vote.id || "")
+  };
 }

@@ -155,7 +155,7 @@ Google Maps 分享網址會由 GAS 限定在 Google Maps 網域內解析，取�
 | `castVote` | 任何已登入成員，只能對自己 | 驗證 choice 對得上選項；同一人覆蓋舊票；投票人數上限 `MAX_VOTE_BALLOTS`（500） |
 | `closeVote` | 發起人或管理員 | 寫 `closedAt` |
 | `deleteVote` | 發起人或管理員 | 軟刪除 |
-| `saveEvent` + `fromVoteId` | 發起人或管理員 | 建立新活動前先 `assertVoteLinkable_`（已截止、尚未連結），活動寫完再 `linkVoteToEvent_` 記 `linkedEventId`。同一把鎖內完成 |
+| `saveEvent` + `fromVoteId`（可帶 `fromVoteOptionId`） | 發起人或管理員 | 建立新活動前先 `assertVoteLinkable_`（已截止、尚未連結）；寫活動時由 `buildVoteResultHistoryEntry_` 把投票結果（最高票、各答案的 @名字、其他選項票數）寫進活動 `history`，`type: vote_result`、作者「系統」；活動寫完再 `linkVoteToEvent_` 記 `linkedEventId`。同一把鎖內完成。`fromVoteOptionId` 不合法時退回計票的第一個最高票；名字超過 60 個只列前 60 個 |
 
 發起人／管理員驗證用 `assertVoteManagePermission_`，不看有沒有投過票。
 
