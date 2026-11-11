@@ -2520,7 +2520,7 @@
         <h1 class="brand-title">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>活動布告欄</span>
-          <time id="app-version-badge" class="version-label" datetime="2026-11-11T16:55:49+08:00">v261111.1655</time>
+          <time id="app-version-badge" class="version-label" datetime="2026-11-11T17:07:05+08:00">v261111.1707</time>
         </h1>
         <div id="header-me" class="header-me">
           <img id="header-avatar" class="header-avatar" alt="" hidden>
@@ -3180,7 +3180,7 @@
       "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec";
 
     const CONFIG = {
-      APP_VERSION: "v261111.1655", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
+      APP_VERSION: "v261111.1707", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
       LIFF_ID: SITE_SETUP.LIFF_ID || "",
       LIFF_URL: SITE_SETUP.LIFF_URL || "",
       GAS_API_URL: SITE_SETUP.GAS_API_URL || "",
@@ -5346,6 +5346,7 @@ ${getShareableUrl()}`;
         return;
       }
 
+      const descCards = [];
       filteredEvents.forEach(evt => {
         normalizeFixedGroupParticipation(evt);
         const fixedGroup = isFixedGroup(evt);
@@ -5476,14 +5477,21 @@ ${getShareableUrl()}`;
         cardEl.querySelector(".share-action").onclick = () => shareEventToClipboard(evt);
 
         listEl.appendChild(cardEl);
+        if (cardEl.querySelector(".card-desc")) descCards.push({ cardEl, evt });
+      });
 
-        // 說明被夾住（超過 20 行）才顯示「顯示全部」，點了直接進活動詳情看全文。
+      // 說明被夾住（超過 20 行）才顯示「顯示全部」，點了直接進活動詳情看全文。
+      // 一定要在整份列表都放進 DOM 之後才量，而且先全部讀、再全部寫：
+      // 迴圈裡量會在列表只剩一張卡時強制排版，頁面瞬間變矮，捲動位置被夾回最上面（v261111.1655 的 bug）。
+      const clamped = descCards.filter(({ cardEl }) => {
         const descEl = cardEl.querySelector(".card-desc");
+        return descEl.scrollHeight > descEl.clientHeight + 2;
+      });
+      clamped.forEach(({ cardEl, evt }) => {
         const moreBtn = cardEl.querySelector(".card-desc-more");
-        if (descEl && moreBtn && descEl.scrollHeight > descEl.clientHeight + 2) {
-          moreBtn.hidden = false;
-          moreBtn.onclick = () => openDetailModal(evt.id);
-        }
+        if (!moreBtn) return;
+        moreBtn.hidden = false;
+        moreBtn.onclick = () => openDetailModal(evt.id);
       });
     }
 
