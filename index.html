@@ -2564,7 +2564,7 @@
         <h1 class="brand-title">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>活動布告欄</span>
-          <time id="app-version-badge" class="version-label" datetime="2026-11-11T17:25:49+08:00">v261111.1725</time>
+          <time id="app-version-badge" class="version-label" datetime="2026-11-11T17:44:17+08:00">v261111.1744</time>
         </h1>
         <div id="header-me" class="header-me">
           <img id="header-avatar" class="header-avatar" alt="" hidden>
@@ -3224,7 +3224,7 @@
       "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec";
 
     const CONFIG = {
-      APP_VERSION: "v261111.1725", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
+      APP_VERSION: "v261111.1744", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
       LIFF_ID: SITE_SETUP.LIFF_ID || "",
       LIFF_URL: SITE_SETUP.LIFF_URL || "",
       GAS_API_URL: SITE_SETUP.GAS_API_URL || "",
@@ -6758,7 +6758,7 @@ ${pageUrl}`;
     }
 
     // 分享文字：與活動分享同一個做法，一鍵複製、跳吐司。
-    // 進行中：每個選項的票數、標領先、附投票連結（短，貼群組不洗版）。
+    // 進行中：只列選項，不帶票數、不帶截止，空一行後接投票連結（使用者決定）。
     // 已結束：標題改 投票結果，列最高票與投給它的 @名字，其他選項只列票數。
     function getVoteShareText(vote) {
       const { tally, winners, voterCount } = getVoteTally(vote);
@@ -6773,12 +6773,11 @@ ${pageUrl}`;
       };
       const options = vote.options || [];
 
+      // 進行中只列選項，不帶票數、不帶截止（使用者決定）：這是「來投票」的邀請，不是戰況。
       if (!closed) {
-        const lines = [`【投票：${vote.title}】`, `截止：${formatDateTime(vote.endsAt)} · ${modeText} · 已投 ${voterCount} 人`];
-        options.forEach((option, index) => {
-          lines.push(`${index + 1}. ${formatVoteOptionText(vote, option)} — ${countText(option)}${winners.includes(option.id) && voterCount > 0 ? "（領先）" : ""}`);
-        });
-        lines.push("還沒投：點下面連結", getShareableUrl());
+        const lines = [`【投票：${vote.title}】`];
+        options.forEach((option, index) => lines.push(`${index + 1}. ${formatVoteOptionText(vote, option)}`));
+        lines.push("", getShareableUrl());
         return lines.join("\n");
       }
 
