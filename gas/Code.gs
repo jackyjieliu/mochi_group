@@ -102,6 +102,17 @@ const APP_CONFIG = Object.freeze({
   // LINE 群組上限 500 人，超過就拒絕，避免有人拿 /exec 網址灌爆表格。
   MAX_MEMBERS: 500,
   MAX_MEMBER_NAME_LENGTH: 40,
+  // 投票。獨立的 Votes 表，與 Events 平行；結束後保留 3 天再歸檔，
+  // 若已從投票建立活動（linkedEventId 有值）則立刻退場。
+  VOTES_SHEET: "Votes",
+  VOTES_ARCHIVE_SHEET: "VotesArchive",
+  MAX_VOTE_OPTIONS: 10,
+  MAX_VOTE_OPTION_LENGTH: 40,
+  MAX_VOTE_TITLE_LENGTH: 60,
+  MAX_VOTE_DESCRIPTION_LENGTH: 300,
+  // 與打卡名單同理：castVote 是由未驗證輸入新增項目的路徑，必須有硬上限。
+  MAX_VOTE_BALLOTS: 500,
+  CLOSED_VOTE_RETENTION_MS: 3 * 24 * 60 * 60 * 1000,
   SCHEMA_VERSION: "5"
 });
 
@@ -164,6 +175,38 @@ const MEMBER_HEADERS = Object.freeze([
   "joinedAt",
   "checkedInAt"
 ]);
+
+/**
+ * 投票。一列一個投票，選項與選票都是 JSON。
+ * 「已截止」不是欄位，是計算：closedAt 有值，或現在已過 endsAt。
+ */
+const VOTE_HEADERS = Object.freeze([
+  "id",
+  "status",
+  "title",
+  "description",
+  "optionKind",
+  "selectMode",
+  "options",
+  "ballots",
+  "endsAt",
+  "closedAt",
+  "linkedEventId",
+  "creatorName",
+  "creatorUser",
+  "history",
+  "createdAt",
+  "updatedAt",
+  "deletedAt",
+  "deletedBy",
+  "deletedByUserId",
+  "schemaVersion"
+]);
+
+const VOTE_JSON_FIELDS = Object.freeze(["options", "ballots", "history", "creatorUser"]);
+const VOTE_OPTION_KINDS = Object.freeze(["text", "date"]);
+const VOTE_SELECT_MODES = Object.freeze(["single", "multi"]);
+const VOTE_MULTI_ANSWERS = Object.freeze(["yes", "no", "maybe"]);
 
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -431,6 +474,8 @@ function setupProject() {
     formatAuditSheet_(auditSheet);
     getOrCreateArchiveSheet_(spreadsheet, EVENT_HEADERS.slice());
     getOrCreateMembersSheet_(spreadsheet);
+    getOrCreateVotesSheet_(spreadsheet);
+    getOrCreateVotesArchiveSheet_(spreadsheet);
     installArchiveTrigger_();
 
     PropertiesService.getScriptProperties().setProperties({
@@ -441,7 +486,7 @@ function setupProject() {
     refreshPublicPayloadCacheQuietly_(spreadsheet);
     return {
       status: "success",
-      message: "Events、EventsArchive、AuditLog 與 Members 已完成初始化，表格結構版本為 " +
+      message: "Events、EventsArchive、AuditLog、Members、Votes 與 VotesArchive 已完成初始化，表格結構版本為 " +
         APP_CONFIG.SCHEMA_VERSION + "。已建立每日自動歸檔與許願結算觸發器。"
     };
   } finally {
@@ -461,7 +506,9 @@ function showSchemaInfo() {
     "刪除活動不會移除列，只會寫入 deletedAt 與 deletedBy。",
     "Members：打卡名單，checkedInAt 非空代表本輪已打卡，不保留歷史月份。",
     "打卡名單上限 " + APP_CONFIG.MAX_MEMBERS + " 人；移除成員是整列硬刪除，紀錄留在 AuditLog。",
-    "打卡狀態不會自動重置，只有管理員在網頁上按重置全部才會清空。"
+    "打卡狀態不會自動重置，只有管理員在網頁上按重置全部才會清空。",
+    "Votes：投票，options 與 ballots 為 JSON；closedAt 有值或過了 endsAt 即截止。",
+    "投票結束 3 天後、或已從投票建立活動（linkedEventId 有值）後，由每日歸檔搬到 VotesArchive。"
   ].join("\n");
   SpreadsheetApp.getUi().alert(message);
 }
@@ -521,7 +568,8 @@ function doPost(e) {
     let result;
     switch (payload.action) {
       case "saveEvent":
-        result = saveEvent_(eventsSheet, auditSheet, payload);
+        // 帶 fromVoteId 時要連結投票，所以多傳 spreadsheet 取 Votes 表。
+        result = saveEvent_(eventsSheet, auditSheet, payload, spreadsheet);
         break;
       case "toggleRSVP":
         result = updateRsvp_(eventsSheet, auditSheet, payload);
@@ -554,6 +602,19 @@ function doPost(e) {
         break;
       case "adminResetCheckIns":
         result = adminResetCheckIns_(spreadsheet, auditSheet, payload);
+        break;
+      // 投票同樣收 spreadsheet：Votes 表不存在時只讓投票 action 失敗，不連帶活動。
+      case "saveVote":
+        result = saveVote_(spreadsheet, auditSheet, payload);
+        break;
+      case "castVote":
+        result = castVote_(spreadsheet, auditSheet, payload);
+        break;
+      case "closeVote":
+        result = closeVote_(spreadsheet, auditSheet, payload);
+        break;
+      case "deleteVote":
+        result = deleteVote_(spreadsheet, auditSheet, payload);
         break;
       default:
         throw new Error("不支援的 action：" + String(payload.action || "空白"));
@@ -657,7 +718,7 @@ function cleanGoogleMapsLabel_(encodedValue) {
   return value.slice(0, 160);
 }
 
-function saveEvent_(eventsSheet, auditSheet, payload) {
+function saveEvent_(eventsSheet, auditSheet, payload, spreadsheet) {
   const eventId = requireText_(payload.id, "缺少活動 id");
   const found = findEventById_(eventsSheet, eventId);
   const existingEvent = found ? found.event : null;
@@ -672,6 +733,19 @@ function saveEvent_(eventsSheet, auditSheet, payload) {
     if (!actorUserId || !creatingHostId || actorUserId !== creatingHostId) {
       throw new Error("建立活動者必須與主揪相同。");
     }
+  }
+
+  // 從投票建立活動：先把投票這邊能擋的全擋完，再寫活動，
+  // 否則投票不合格時會留下一個沒人要的活動。
+  let votesSheet = null;
+  let linkedVote = null;
+  const fromVoteId = String(payload.fromVoteId || "").trim();
+  if (fromVoteId) {
+    if (existingEvent) throw new Error("只能在建立新活動時連結投票。");
+    if (!spreadsheet) throw new Error("缺少試算表連線，無法連結投票。");
+    votesSheet = getVotesSheetForRequest_(spreadsheet);
+    linkedVote = requireVote_(votesSheet, fromVoteId);
+    assertVoteLinkable_(linkedVote.vote, payload);
   }
 
   const nowIso = new Date().toISOString();
@@ -740,9 +814,12 @@ function saveEvent_(eventsSheet, auditSheet, payload) {
     action: getLatestHistoryAction_(normalizedEvent) || (existingEvent ? "更新活動" : "建立活動"),
     details: {
       eventAction: eventAction,
-      changedFields: changedFields
+      changedFields: changedFields,
+      fromVoteId: fromVoteId
     }
   });
+
+  if (linkedVote) linkVoteToEvent_(votesSheet, auditSheet, payload, linkedVote, eventId);
 
   return { event: normalizedEvent };
 }
@@ -1719,6 +1796,8 @@ function buildPublicPayloadText_(spreadsheet) {
   // 名單另外用 getSheetByName：Members 表不存在時要靜靜省略這個欄位，
   // 不可用 getRequiredSheetFromSpreadsheet_，否則舊試算表整個 doGet 會壞掉。
   const membersSheet = spreadsheet.getSheetByName(APP_CONFIG.MEMBERS_SHEET);
+  // 投票同理：沒有 Votes 表就省略欄位，前端據此把投票入口鎖成「需更新」。
+  const votesSheet = spreadsheet.getSheetByName(APP_CONFIG.VOTES_SHEET);
 
   return JSON.stringify({
     status: "success",
@@ -1726,7 +1805,8 @@ function buildPublicPayloadText_(spreadsheet) {
     serverTime: new Date().toISOString(),
     calendar: getCalendarPublicInfo_(),
     events: events,
-    members: membersSheet ? readAllMembers_(membersSheet) : undefined
+    members: membersSheet ? readAllMembers_(membersSheet) : undefined,
+    votes: votesSheet ? readAllVotes_(votesSheet).filter(vote => !isRetiredVote_(vote)) : undefined
   });
 }
 
@@ -1934,8 +2014,15 @@ function archiveRetiredEvents() {
       retiredRowNumbers.push(index + 2);
     });
 
+    // 投票與活動同一班車；就算活動一筆都沒退場，投票仍要跑。
+    const movedVotes = archiveRetiredVotes_(spreadsheet);
+
     if (retiredRows.length === 0) {
-      return { moved: 0, remaining: Math.max(eventsSheet.getLastRow() - 1, 0) };
+      if (movedVotes > 0) {
+        SpreadsheetApp.flush();
+        refreshPublicPayloadCacheQuietly_(spreadsheet);
+      }
+      return { moved: 0, movedVotes: movedVotes, remaining: Math.max(eventsSheet.getLastRow() - 1, 0) };
     }
 
     const archiveSheet = getOrCreateArchiveSheet_(spreadsheet, headers);
@@ -1957,7 +2044,7 @@ function archiveRetiredEvents() {
 
     SpreadsheetApp.flush();
     refreshPublicPayloadCacheQuietly_(spreadsheet);
-    return { moved: retiredRows.length, remaining: Math.max(eventsSheet.getLastRow() - 1, 0) };
+    return { moved: retiredRows.length, movedVotes: movedVotes, remaining: Math.max(eventsSheet.getLastRow() - 1, 0) };
   } finally {
     lock.releaseLock();
   }
@@ -2178,7 +2265,8 @@ function archiveRetiredEventsFromMenu() {
   const result = archiveRetiredEvents();
   ui.alert(
     "歸檔完成",
-    "已搬移 " + result.moved + " 筆到「" + APP_CONFIG.ARCHIVE_SHEET + "」。\n" +
+    "已搬移 " + result.moved + " 筆到「" + APP_CONFIG.ARCHIVE_SHEET + "」，" +
+    (result.movedVotes || 0) + " 筆投票到「" + APP_CONFIG.VOTES_ARCHIVE_SHEET + "」。\n" +
     "Events 目前剩下 " + result.remaining + " 筆。\n\n" +
     "搬移對象：已刪除的活動，以及過期後已保留滿 24 小時的一般活動。固定團不會被搬移。",
     ui.ButtonSet.OK
@@ -2236,4 +2324,522 @@ function getCalendarLocation_(locationValue) {
   if (!/https?:\/\//i.test(location)) return location;
   const resolved = resolveMapLocation_(location);
   return String(resolved.displayName || resolved.location || location);
+}
+
+/* ==========================================================================
+   投票
+   獨立的 Votes 表，與 Events 平行。一列一個投票，options 與 ballots 是 JSON。
+   - 「已截止」是計算不是欄位：closedAt 有值，或現在已過 endsAt。沒有關閉用的觸發器。
+   - 任何已登入成員都能發起與投票；改標題、改截止、提前結束、刪除、
+     以及「從投票建立活動」只有發起人與管理員。
+   - 選項在第一張選票出現後凍結，否則既有選票會對不到選項。
+   - 歸檔：結束滿 CLOSED_VOTE_RETENTION_MS，或 linkedEventId 有值（已建立活動）就退場，
+     由 archiveRetiredEvents 同一班觸發器搬到 VotesArchive。已刪除的也走這條。
+   ========================================================================== */
+
+/**
+ * 請求路徑專用：表不存在就直接丟錯，讓前端顯示「需更新」。
+ * 不在請求裡建表——建表與補表頭交給 setupProject()。
+ */
+function getVotesSheetForRequest_(spreadsheet) {
+  const sheet = spreadsheet.getSheetByName(APP_CONFIG.VOTES_SHEET);
+  if (!sheet) throw new Error("投票表格尚未初始化，請先執行 setupProject()。");
+  return sheet;
+}
+
+function getOrCreateVotesSheet_(spreadsheet) {
+  let sheet = spreadsheet.getSheetByName(APP_CONFIG.VOTES_SHEET);
+  if (!sheet) sheet = spreadsheet.insertSheet(APP_CONFIG.VOTES_SHEET);
+  ensureHeaders_(sheet, VOTE_HEADERS);
+  formatHeader_(sheet, VOTE_HEADERS.length, "#2563eb");
+  return sheet;
+}
+
+function getOrCreateVotesArchiveSheet_(spreadsheet) {
+  let sheet = spreadsheet.getSheetByName(APP_CONFIG.VOTES_ARCHIVE_SHEET);
+  if (!sheet) sheet = spreadsheet.insertSheet(APP_CONFIG.VOTES_ARCHIVE_SHEET);
+  ensureHeaders_(sheet, VOTE_HEADERS);
+  formatHeader_(sheet, VOTE_HEADERS.length, "#94a3b8");
+  return sheet;
+}
+
+function readAllVotesWithRows_(sheet) {
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length).getValues();
+  return rows
+    .map((row, index) => ({ rowNumber: index + 2, vote: rowToVote_(headers, row) }))
+    .filter(item => item.vote.id);
+}
+
+function readAllVotes_(sheet) {
+  return readAllVotesWithRows_(sheet).map(item => item.vote);
+}
+
+function rowToVote_(headers, row) {
+  const vote = {};
+  headers.forEach((header, index) => {
+    if (!header) return;
+    let value = row[index];
+    if (VOTE_JSON_FIELDS.includes(header)) {
+      vote[header] = parseJsonField_(value, header === "creatorUser" ? null : []);
+      return;
+    }
+    if (value === undefined || value === null) value = "";
+    // Sheet 會把 ISO 時間字串自動轉成日期物件，統一輸出成字串。
+    if (Object.prototype.toString.call(value) === "[object Date]") value = value.toISOString();
+    value = String(value);
+    if (/^'[=+\-@]/.test(value)) value = value.slice(1);
+    vote[header] = value;
+  });
+  if (!vote.status) vote.status = APP_CONFIG.STATUS_ACTIVE;
+  vote.deleted = isDeletedVote_(vote);
+  vote.options = Array.isArray(vote.options) ? vote.options : [];
+  vote.ballots = normalizeBallots_(vote.ballots);
+  vote.history = Array.isArray(vote.history) ? vote.history : [];
+  return vote;
+}
+
+function voteFieldToCell_(header, value) {
+  if (VOTE_JSON_FIELDS.includes(header)) {
+    return JSON.stringify(value == null ? (header === "creatorUser" ? null : []) : value);
+  }
+  if (value === undefined || value === null) return "";
+  if (typeof value === "boolean" || typeof value === "number") return value;
+  const text = String(value);
+  return /^[=+\-@]/.test(text) ? "'" + text : text;
+}
+
+function writeVoteRow_(sheet, rowNumber, vote) {
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
+  const row = headers.map(header => voteFieldToCell_(header, vote[header]));
+  const targetRow = rowNumber || sheet.getLastRow() + 1;
+  sheet.getRange(targetRow, 1, 1, row.length).setValues([row]);
+}
+
+function findVoteById_(sheet, voteId) {
+  const map = getHeaderMap_(sheet);
+  if (!map.id || sheet.getLastRow() < 2) return null;
+  const match = sheet.getRange(2, map.id, sheet.getLastRow() - 1, 1)
+    .createTextFinder(String(voteId))
+    .matchEntireCell(true)
+    .findNext();
+  if (!match) return null;
+  const rowNumber = match.getRow();
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
+  const row = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
+  return { rowNumber: rowNumber, vote: rowToVote_(headers, row) };
+}
+
+function requireVote_(sheet, voteId) {
+  const found = findVoteById_(sheet, voteId);
+  if (!found) throw new Error("找不到投票：" + voteId);
+  return found;
+}
+
+function isDeletedVote_(vote) {
+  return Boolean(vote) && (
+    vote.deleted === true ||
+    String(vote.status || "").toLowerCase() === APP_CONFIG.STATUS_DELETED
+  );
+}
+
+function assertActiveVote_(vote) {
+  if (isDeletedVote_(vote)) throw new Error("此投票已刪除，無法再修改。");
+}
+
+function parseIsoDate_(value) {
+  if (!value) return null;
+  const parsed = new Date(String(value));
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/** 截止時刻：提前結束看 closedAt，否則看 endsAt。無法解析回傳 null。 */
+function getVoteCloseTime_(vote) {
+  if (!vote) return null;
+  return parseIsoDate_(vote.closedAt) || parseIsoDate_(vote.endsAt);
+}
+
+function isVoteClosed_(vote, now) {
+  if (!vote) return false;
+  if (String(vote.closedAt || "").trim()) return true;
+  const endsAt = parseIsoDate_(vote.endsAt);
+  if (!endsAt) return false;
+  return endsAt.getTime() <= (now || Date.now());
+}
+
+/**
+ * 退場：已刪除、已建立活動，或結束後保留期已過。
+ * 與 isRetiredEvent_ 同一個角色：doGet 過濾與每日歸檔都用它，兩邊永遠一致。
+ */
+function isRetiredVote_(vote) {
+  if (!vote) return false;
+  if (isDeletedVote_(vote)) return true;
+  if (String(vote.linkedEventId || "").trim()) return true;
+  if (!isVoteClosed_(vote)) return false;
+  const closeTime = getVoteCloseTime_(vote);
+  if (!closeTime) return false;
+  return closeTime.getTime() + APP_CONFIG.CLOSED_VOTE_RETENTION_MS < Date.now();
+}
+
+function getVoteCreatorUserId_(vote) {
+  return vote && vote.creatorUser && vote.creatorUser.userId ? String(vote.creatorUser.userId) : "";
+}
+
+/** 發起人或管理員。不看有沒有投過票，投票者不能改別人開的投票。 */
+function assertVoteManagePermission_(vote, payload) {
+  const actorUserId = String(payload.actorUserId || "");
+  if (verifyAdminPassword_(payload.adminPassword)) return;
+  if (actorUserId && getVoteCreatorUserId_(vote) === actorUserId) return;
+  throw new Error("只有發起人或管理員可以執行此操作。");
+}
+
+/** 由 GAS 組歷史條目，不採用前端送來的文字，避免冒充系統紀錄。 */
+function makeVoteHistoryEntry_(payload, actionText, actionType) {
+  const now = new Date();
+  return {
+    id: "log_" + now.getTime() + "_" + Math.random().toString(36).slice(2, 8),
+    author: String(payload.actorName || payload.displayName || "系統"),
+    authorUserId: String(payload.actorUserId || ""),
+    time: Utilities.formatDate(now, Session.getScriptTimeZone(), "MM/dd HH:mm"),
+    timestamp: now.toISOString(),
+    type: actionType || "activity",
+    action: actionText
+  };
+}
+
+function normalizeBallots_(ballots) {
+  const list = Array.isArray(ballots) ? ballots : parseJsonField_(ballots, []);
+  const unique = {};
+  list.forEach(ballot => {
+    if (!ballot || typeof ballot !== "object") return;
+    const userId = String(ballot.userId || "").trim();
+    if (!userId) return;
+    unique[userId] = {
+      userId: userId,
+      displayName: String(ballot.displayName || "未命名成員").slice(0, APP_CONFIG.MAX_MEMBER_NAME_LENGTH),
+      pictureUrl: String(ballot.pictureUrl || ""),
+      choice: ballot.choice,
+      votedAt: String(ballot.votedAt || "")
+    };
+  });
+  return Object.keys(unique).map(userId => unique[userId]);
+}
+
+/**
+ * 整理選項。文字選項存 label；日期選項存 date（必填）與 time（可空＝整天）。
+ * 至少兩個、最多 MAX_VOTE_OPTIONS 個，id 不可重複。
+ */
+function normalizeVoteOptions_(rawOptions, optionKind) {
+  const list = Array.isArray(rawOptions) ? rawOptions : parseJsonField_(rawOptions, []);
+  if (list.length < 2) throw new Error("投票至少需要兩個選項。");
+  if (list.length > APP_CONFIG.MAX_VOTE_OPTIONS) {
+    throw new Error("選項最多 " + APP_CONFIG.MAX_VOTE_OPTIONS + " 個。");
+  }
+  const seen = {};
+  return list.map((raw, index) => {
+    const option = raw && typeof raw === "object" ? raw : { label: raw };
+    const id = String(option.id || "").trim() || ("opt_" + (index + 1));
+    if (seen[id]) throw new Error("選項 id 重複：" + id);
+    seen[id] = true;
+
+    if (optionKind === "date") {
+      const date = String(option.date || "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || isNaN(new Date(date + "T00:00:00").getTime())) {
+        throw new Error("第 " + (index + 1) + " 個日期選項格式錯誤。");
+      }
+      const time = String(option.time || "").trim();
+      if (time && !/^\d{2}:\d{2}$/.test(time)) {
+        throw new Error("第 " + (index + 1) + " 個選項的時間格式錯誤。");
+      }
+      return { id: id, date: date, time: time };
+    }
+
+    const label = String(option.label || "").trim().slice(0, APP_CONFIG.MAX_VOTE_OPTION_LENGTH);
+    if (!label) throw new Error("第 " + (index + 1) + " 個選項文字不可空白。");
+    return { id: id, label: label };
+  });
+}
+
+/**
+ * 整理一張選票的 choice。
+ * 單選：一個選項 id。多選：{ 選項 id: yes | no | maybe }，不認識的 key 丟掉，至少答一個。
+ */
+function normalizeVoteChoice_(vote, rawChoice) {
+  const optionIds = (vote.options || []).map(option => String(option.id));
+  if (String(vote.selectMode) === "multi") {
+    const source = typeof rawChoice === "string" ? parseJsonField_(rawChoice, null) : rawChoice;
+    if (!source || typeof source !== "object" || Array.isArray(source)) {
+      throw new Error("多選投票的回答格式錯誤。");
+    }
+    const result = {};
+    optionIds.forEach(id => {
+      const answer = String(source[id] || "").toLowerCase();
+      if (VOTE_MULTI_ANSWERS.includes(answer)) result[id] = answer;
+    });
+    if (Object.keys(result).length === 0) throw new Error("請至少回答一個選項。");
+    return result;
+  }
+  const chosen = String(rawChoice || "").trim();
+  if (!optionIds.includes(chosen)) throw new Error("選項不存在。");
+  return chosen;
+}
+
+/**
+ * 整理投票主體。existing 有值代表編輯：有人投過票後選項、類型、方式一律凍結。
+ */
+function normalizeVote_(payload, existing) {
+  const title = String(payload.title || "").trim().slice(0, APP_CONFIG.MAX_VOTE_TITLE_LENGTH);
+  if (!title) throw new Error("投票標題不可空白。");
+  const description = String(payload.description || "").trim().slice(0, APP_CONFIG.MAX_VOTE_DESCRIPTION_LENGTH);
+
+  const endsAt = parseIsoDate_(payload.endsAt);
+  if (!endsAt) throw new Error("截止時間格式錯誤。");
+  if (!existing && endsAt.getTime() <= Date.now()) throw new Error("截止時間必須在未來。");
+
+  const frozen = Boolean(existing) && normalizeBallots_(existing.ballots).length > 0;
+  const optionKind = frozen ? String(existing.optionKind) : String(payload.optionKind || "text").toLowerCase();
+  const selectMode = frozen ? String(existing.selectMode) : String(payload.selectMode || "single").toLowerCase();
+  if (!VOTE_OPTION_KINDS.includes(optionKind)) throw new Error("不支援的選項類型。");
+  if (!VOTE_SELECT_MODES.includes(selectMode)) throw new Error("不支援的投票方式。");
+  const options = frozen ? existing.options : normalizeVoteOptions_(payload.options, optionKind);
+
+  return {
+    title: title,
+    description: description,
+    optionKind: optionKind,
+    selectMode: selectMode,
+    options: options,
+    endsAt: endsAt.toISOString()
+  };
+}
+
+/** 建立或編輯投票。 */
+function saveVote_(spreadsheet, auditSheet, payload) {
+  const votesSheet = getVotesSheetForRequest_(spreadsheet);
+  const voteId = requireText_(payload.id, "缺少投票 id");
+  const actorUserId = requireText_(payload.actorUserId, "尚未取得 LINE 身分，請重新登入。");
+  const found = findVoteById_(votesSheet, voteId);
+  const existing = found ? found.vote : null;
+  if (existing) {
+    assertActiveVote_(existing);
+    assertVoteManagePermission_(existing, payload);
+  }
+
+  const nowIso = new Date().toISOString();
+  const normalized = normalizeVote_(payload, existing);
+  const vote = {
+    id: voteId,
+    status: APP_CONFIG.STATUS_ACTIVE,
+    title: normalized.title,
+    description: normalized.description,
+    optionKind: normalized.optionKind,
+    selectMode: normalized.selectMode,
+    options: normalized.options,
+    endsAt: normalized.endsAt,
+    updatedAt: nowIso,
+    deletedAt: "",
+    deletedBy: "",
+    deletedByUserId: "",
+    schemaVersion: APP_CONFIG.SCHEMA_VERSION
+  };
+
+  if (existing) {
+    // 選票、發起人、連結與提前結束狀態都以雲端為準，不接受前端覆蓋。
+    vote.ballots = normalizeBallots_(existing.ballots);
+    vote.creatorUser = existing.creatorUser;
+    vote.creatorName = existing.creatorName;
+    vote.linkedEventId = String(existing.linkedEventId || "");
+    vote.closedAt = String(existing.closedAt || "");
+    vote.createdAt = existing.createdAt || nowIso;
+    vote.history = mergeHistoryEntries_(existing.history, makeVoteHistoryEntry_(payload, "更新投票內容", "update"));
+  } else {
+    const creator = normalizeUser_({
+      userId: actorUserId,
+      displayName: payload.actorName || payload.displayName,
+      pictureUrl: payload.pictureUrl || (payload.creatorUser && payload.creatorUser.pictureUrl)
+    });
+    vote.ballots = [];
+    vote.creatorUser = creator;
+    vote.creatorName = creator.displayName;
+    vote.linkedEventId = "";
+    vote.closedAt = "";
+    vote.createdAt = nowIso;
+    vote.history = [makeVoteHistoryEntry_(payload, "發起投票", "create")];
+  }
+
+  writeVoteRow_(votesSheet, found && found.rowNumber, vote);
+  appendAudit_(auditSheet, payload, {
+    eventId: voteId,
+    actionType: existing ? "vote_update" : "vote_create",
+    action: existing ? "更新投票" : "發起投票",
+    details: {
+      optionKind: vote.optionKind,
+      selectMode: vote.selectMode,
+      optionCount: vote.options.length,
+      endsAt: vote.endsAt
+    }
+  });
+  return { vote: vote };
+}
+
+/** 投票或改票。只認 actorUserId，不接受替別人投。 */
+function castVote_(spreadsheet, auditSheet, payload) {
+  const votesSheet = getVotesSheetForRequest_(spreadsheet);
+  const voteId = requireText_(payload.voteId, "缺少 voteId");
+  const actorUserId = requireText_(payload.actorUserId, "尚未取得 LINE 身分，請重新登入。");
+  const found = requireVote_(votesSheet, voteId);
+  const vote = found.vote;
+  assertActiveVote_(vote);
+  if (isVoteClosed_(vote)) throw new Error("投票已截止。");
+
+  const choice = normalizeVoteChoice_(vote, payload.choice);
+  const ballots = normalizeBallots_(vote.ballots);
+  const existingIndex = ballots.findIndex(ballot => ballot.userId === actorUserId);
+  if (existingIndex < 0 && ballots.length >= APP_CONFIG.MAX_VOTE_BALLOTS) {
+    throw new Error("投票人數已達上限 " + APP_CONFIG.MAX_VOTE_BALLOTS + " 人。");
+  }
+  const ballot = {
+    userId: actorUserId,
+    displayName: String(payload.actorName || payload.displayName || "未命名成員")
+      .slice(0, APP_CONFIG.MAX_MEMBER_NAME_LENGTH),
+    pictureUrl: String(payload.pictureUrl || ""),
+    choice: choice,
+    votedAt: new Date().toISOString()
+  };
+  if (existingIndex >= 0) ballots[existingIndex] = ballot;
+  else ballots.push(ballot);
+
+  vote.ballots = ballots;
+  vote.updatedAt = ballot.votedAt;
+  vote.history = mergeHistoryEntries_(
+    vote.history,
+    makeVoteHistoryEntry_(payload, existingIndex >= 0 ? "更改了投票" : "投了一票", existingIndex >= 0 ? "update" : "join")
+  );
+  vote.schemaVersion = APP_CONFIG.SCHEMA_VERSION;
+  writeVoteRow_(votesSheet, found.rowNumber, vote);
+
+  appendAudit_(auditSheet, payload, {
+    eventId: voteId,
+    actionType: "vote_cast",
+    action: existingIndex >= 0 ? "更改投票" : "投票",
+    details: { changed: existingIndex >= 0, ballotCount: ballots.length }
+  });
+  return { vote: vote };
+}
+
+/** 提前結束。只有發起人與管理員。 */
+function closeVote_(spreadsheet, auditSheet, payload) {
+  const votesSheet = getVotesSheetForRequest_(spreadsheet);
+  const voteId = requireText_(payload.voteId, "缺少 voteId");
+  const found = requireVote_(votesSheet, voteId);
+  const vote = found.vote;
+  assertActiveVote_(vote);
+  assertVoteManagePermission_(vote, payload);
+  if (isVoteClosed_(vote)) return { vote: vote, alreadyClosed: true };
+
+  const nowIso = new Date().toISOString();
+  vote.closedAt = nowIso;
+  vote.updatedAt = nowIso;
+  vote.history = mergeHistoryEntries_(vote.history, makeVoteHistoryEntry_(payload, "提前結束投票", "update"));
+  vote.schemaVersion = APP_CONFIG.SCHEMA_VERSION;
+  writeVoteRow_(votesSheet, found.rowNumber, vote);
+  appendAudit_(auditSheet, payload, {
+    eventId: voteId,
+    actionType: "vote_close",
+    action: "提前結束投票",
+    details: { closedAt: nowIso }
+  });
+  return { vote: vote };
+}
+
+/** 軟刪除，與活動同一條規則：請求當下不刪列，列由每日歸檔搬走。 */
+function deleteVote_(spreadsheet, auditSheet, payload) {
+  const votesSheet = getVotesSheetForRequest_(spreadsheet);
+  const voteId = requireText_(payload.voteId, "缺少 voteId");
+  const found = requireVote_(votesSheet, voteId);
+  const vote = found.vote;
+  assertVoteManagePermission_(vote, payload);
+  if (isDeletedVote_(vote)) return { voteId: voteId, deleted: true, alreadyDeleted: true };
+
+  const nowIso = new Date().toISOString();
+  vote.status = APP_CONFIG.STATUS_DELETED;
+  vote.deleted = true;
+  vote.deletedAt = nowIso;
+  vote.deletedBy = String(payload.actorName || "");
+  vote.deletedByUserId = String(payload.actorUserId || "");
+  vote.updatedAt = nowIso;
+  vote.history = mergeHistoryEntries_(vote.history, makeVoteHistoryEntry_(payload, "刪除投票", "delete"));
+  vote.schemaVersion = APP_CONFIG.SCHEMA_VERSION;
+  writeVoteRow_(votesSheet, found.rowNumber, vote);
+  appendAudit_(auditSheet, payload, {
+    eventId: voteId,
+    actionType: "vote_delete",
+    action: "刪除投票",
+    details: { deletedAt: nowIso }
+  });
+  return { voteId: voteId, deleted: true };
+}
+
+/**
+ * 從投票建立活動前的檢查。全部在寫活動之前跑完，
+ * 任何一條不過都不會留下活動。
+ */
+function assertVoteLinkable_(vote, payload) {
+  assertActiveVote_(vote);
+  assertVoteManagePermission_(vote, payload);
+  if (!isVoteClosed_(vote)) throw new Error("投票尚未截止，不能建立活動。");
+  if (String(vote.linkedEventId || "").trim()) throw new Error("此投票已建立過活動。");
+}
+
+/** 活動寫完後把 linkedEventId 記回投票。此後 doGet 不再送出這個投票。 */
+function linkVoteToEvent_(votesSheet, auditSheet, payload, found, eventId) {
+  const vote = found.vote;
+  const nowIso = new Date().toISOString();
+  vote.linkedEventId = String(eventId);
+  vote.updatedAt = nowIso;
+  vote.history = mergeHistoryEntries_(vote.history, makeVoteHistoryEntry_(payload, "已從投票結果建立活動", "update"));
+  vote.schemaVersion = APP_CONFIG.SCHEMA_VERSION;
+  writeVoteRow_(votesSheet, found.rowNumber, vote);
+  appendAudit_(auditSheet, payload, {
+    eventId: vote.id,
+    actionType: "vote_link",
+    action: "從投票建立活動",
+    details: { linkedEventId: String(eventId) }
+  });
+}
+
+/**
+ * 把退場的投票搬到 VotesArchive。呼叫端已持有 Script Lock（archiveRetiredEvents）。
+ * 與活動歸檔同一套：依歸檔表自己的表頭重排、由下往上刪列。回傳搬移筆數。
+ */
+function archiveRetiredVotes_(spreadsheet) {
+  const votesSheet = spreadsheet.getSheetByName(APP_CONFIG.VOTES_SHEET);
+  if (!votesSheet || votesSheet.getLastRow() < 2) return 0;
+
+  const headers = votesSheet.getRange(1, 1, 1, votesSheet.getLastColumn()).getDisplayValues()[0];
+  const rows = votesSheet.getRange(2, 1, votesSheet.getLastRow() - 1, headers.length).getValues();
+  const retiredRows = [];
+  const retiredRowNumbers = [];
+  rows.forEach((row, index) => {
+    const vote = rowToVote_(headers, row);
+    if (!vote.id || !isRetiredVote_(vote)) return;
+    retiredRows.push(row);
+    retiredRowNumbers.push(index + 2);
+  });
+  if (retiredRows.length === 0) return 0;
+
+  const archiveSheet = getOrCreateVotesArchiveSheet_(spreadsheet);
+  const archiveHeaders = archiveSheet
+    .getRange(1, 1, 1, archiveSheet.getLastColumn()).getDisplayValues()[0];
+  const alignedRows = retiredRows.map(row => {
+    const byHeader = {};
+    headers.forEach((header, index) => { if (header) byHeader[header] = row[index]; });
+    return archiveHeaders.map(header => (header in byHeader) ? byHeader[header] : "");
+  });
+  archiveSheet
+    .getRange(archiveSheet.getLastRow() + 1, 1, alignedRows.length, archiveHeaders.length)
+    .setValues(alignedRows);
+  retiredRowNumbers.slice().reverse().forEach(rowNumber => votesSheet.deleteRow(rowNumber));
+  return retiredRows.length;
 }

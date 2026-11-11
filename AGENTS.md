@@ -9,7 +9,7 @@
 - `gas/Code.gs`：Google Apps Script 後端，處理 Sheet 讀寫、權限、地圖短網址、Google 日曆同步、歸檔與操作紀錄。
 - `gas/README.md`：GAS 表格欄位、安裝、部署、日曆與歸檔說明。
 
-Google Sheet 內有四張工作表：`Events`（目前顯示中的活動）、`EventsArchive`（已退場活動，平常不讀取）、`AuditLog`（永久操作紀錄）、`Members`（打卡名單）。
+Google Sheet 內有六張工作表：`Events`（目前顯示中的活動）、`EventsArchive`（已退場活動，平常不讀取）、`AuditLog`（永久操作紀錄）、`Members`（打卡名單）、`Votes`（投票）、`VotesArchive`（已退場投票，平常不讀取）。
 
 ## 資料與隱私邊界
 
@@ -57,7 +57,7 @@ Google Sheet 內有四張工作表：`Events`（目前顯示中的活動）、`E
 
 ## Google Sheet 與 GAS 規則
 
-- `setupProject()` 負責新增／修復 `Events`、`EventsArchive`、`AuditLog` 與 `Members` 表格及欄位，並註冊每日歸檔觸發器。只在 schema 改變或尚未初始化時要求使用者執行。
+- `setupProject()` 負責新增／修復 `Events`、`EventsArchive`、`AuditLog`、`Members`、`Votes` 與 `VotesArchive` 表格及欄位，並註冊每日歸檔觸發器。只在 schema 改變或尚未初始化時要求使用者執行。
 - `onOpen()` 在電腦版 Google Sheet 頂部建立「活動布告欄」自訂選單，不是底部工作表分頁。手機版 Sheets 可能不顯示自訂選單。選單中結尾為底線的私有函式不會出現在編輯器的執行下拉選單，要驗證程式碼版本請直接搜尋原始碼字串。
 - `setAdminPassword()` 只保存加鹽 SHA-256 雜湊到 Script Properties，密碼不得出現在 Sheet 或程式碼。
 - 寫入操作必須保留 Script Lock 與 `mutationId` 幂等檢查，避免手機與電腦同時操作重複寫入。
@@ -81,6 +81,8 @@ Google Sheet 內有四張工作表：`Events`（目前顯示中的活動）、`E
 | 勾選／取消打卡成功（第二層） | ✗ | ✓ | ✗ | ✗ |
 | 移除打卡名單成員 | ✗ | ✓ | ✗ | ✗ |
 | 重置全部人打卡 | ✗ | ✓ | ✓ 僅管理員 | ✗ |
+| 發起投票、投票／改票（只能對自己） | — | ✓ | ✓ | ✓（任何已登入成員） |
+| 編輯投票、提前結束、刪除投票、從投票建立活動 | 發起人 ✓ | ✓ | ✗ | ✗ |
 
 - 已報名成員可共同維護活動細節，這是刻意開放的。GAS 用 `assertEditPermission_()`（含 `isEventAttendee_()`）驗證。
 - **交棒必須用 `assertHandoffPermission_()`，不可沿用 `assertEditPermission_()`** —— 否則任何報名者都能把自己設成主揪。前端也要同步用 `canCurrentUserHandoffHost()` 鎖住主揪下拉選單。
@@ -189,6 +191,28 @@ Google Sheet 內有四張工作表：`Events`（目前顯示中的活動）、`E
 - 打卡視窗的排序與篩選是**兩件不同的事，不要混回同一個控制項**：下拉只管名稱（A→Z／Z→A），有沒有打卡成功由三顆 pill 篩選。曾經把「未打卡優先」塞進排序下拉，與 pill 的語意重疊。
 - 「@ 標記」複製的是**目前篩選後可見的成員**（受搜尋、pill、排序影響），沿用活動視窗 `btn-mention-attendees` 的作法：只複製 `@名字`，用 `safeCopyText`。
 - 打卡視窗裡的三顆篩選 pill 沿用 `.tab-btn` 樣式但**單選互斥**，與主畫面那組多選開關無關。`setupEventListeners` 綁定主畫面篩選時必須用 `.nav-filters .tab-btn` 選擇器；改回全域 `.tab-btn` 會把 modal 那三顆也綁上活動篩選邏輯，主畫面篩選當場壞掉。
+
+### 投票
+
+投票是獨立的卡片區，資料在 `Votes` 工作表，與 `Events` 平行。**不是活動的一種**，不進活動列表、不受排序面板與分類開關影響。
+
+- **版面位置**：標題列下方、排序／打卡／宣傳／日曆四顆按鈕**之上**，有自己的 `#votes-section`。沒有投票或後端未就緒時整區隱藏。曾經規劃在排序面板加「投票」分類開關，使用者否決；不要加回去。
+- **入口**：按 揪團 後，表單頂端的 活動｜投票 切換（`[data-create-mode]`），預設 活動，發起活動不多一個步驟。不要另外加浮動按鈕或篩選列按鈕（篩選列四顆等寬，第五顆會擠壞）。
+- **就緒判斷**用 `Array.isArray(data.votes)`（同打卡的 `members`），**不是** `schemaVersion`。未就緒時切換鈕顯示「投票（需更新）」並停用。
+- **「已截止」是計算不是欄位**：`closedAt` 有值，或現在已過 `endsAt`。前端 `isVoteClosed()` 與 GAS `isVoteClosed_()` 必須同一條規則。沒有關閉用的觸發器。
+- 選項類型 `optionKind` 為 `text` 或 `date`，一個投票只有一種。日期選項 `{ id, date, time }`，`time` 空字串＝整天（表單勾「不指定時間」）。方式 `selectMode` 為 `single` 或 `multi`。
+- **單選：點選項就是投票，一次請求。多選：每個選項三顆 可以／不行／再看看，全部選好按 送出，一次請求。** 不要改成每點一顆就送——請求數是本專案的瓶頸。多選暫存在 `voteDraftChoices`，不進 localStorage。
+- 名字公開：每個選項下方顯示投給它的人（同報名名單）。這是使用者選的，不要改成只顯示人數。
+- **選項在第一張選票出現後凍結**（GAS `normalizeVote_` 強制，含 `optionKind`、`selectMode`）。否則既有選票會對不到選項。
+- `castVote_` **只認 `payload.actorUserId`**，不接受替別人投；同一人再投是覆蓋不是新增（`normalizeBallots_` 以 userId 去重）。
+- 最高票由前端 `getVoteTally()` 即時計算，不存 Sheet：單選看票數；多選先看 可以 再看 再看看；同票全部標；全零沒有最高票。
+- **從投票建立活動**：只有發起人與管理員，且投票已截止、尚未連結。按鈕開啟一般活動表單並預填（標題、日期；整天選項時、分留空，用 `setPickerPlaceholder` 讓 `required` 真的擋住；文字投票把結果寫進說明）。送出 `saveEvent` 時夾帶 `fromVoteId`，GAS 在**同一把鎖**內先 `assertVoteLinkable_` 再寫活動，最後 `linkVoteToEvent_` 記下 `linkedEventId`。任何一條檢查不過都不會留下活動。同票時先出現同票選擇器（`voteTiePickerId`），不自動挑。
+- 投票**不做樂觀更新**（同打卡）：等 `sendPostToGAS` 回 `ok && !pending` 才改本機 `votesData`，所以沒有回滾程式碼，也不要加。建立投票是例外：先顯示、失敗整筆拿掉，與建立活動同一套。
+- 退場（`isRetiredVote_`）：已刪除、`linkedEventId` 有值、或截止後滿 `CLOSED_VOTE_RETENTION_MS`（3 天）。`doGet` 過濾與每日歸檔共用同一支函式；歸檔搭 `archiveRetiredEvents` 同一班觸發器，搬進 `VotesArchive` 前**依歸檔表自己的表頭重排**。
+- 資料上限：選項 ≤ `MAX_VOTE_OPTIONS`（10）、選項文字 ≤ 40 字、標題 ≤ 60、說明 ≤ 300、選票 ≤ `MAX_VOTE_BALLOTS`（500）、`history` ≤ 50。`castVote_` 是由未驗證輸入新增項目的路徑，上限不可移除。
+- 刪除投票是軟刪除，列由每日歸檔搬走，與活動同一條規則。
+- 投票不碰 Google 日曆；只有從投票建立出來的活動走正常同步。
+- 本版沒有投票留言、也沒有編輯投票的 UI（GAS `saveVote` 已支援編輯，前端尚未接）。
 
 ### Google 日曆
 

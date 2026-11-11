@@ -24,7 +24,7 @@
 3. 備份原本的 `Code.gs`。
 4. 將本資料夾的 `Code.gs` 完整貼入並儲存。
 5. 在 Apps Script 上方函式選單選擇 `setupProject`，執行一次並完成 Sheet、Google Calendar 與觸發器授權。
-6. 確認試算表出現 `Events`、`EventsArchive` 與 `AuditLog` 三張工作表，且「觸發條件」頁面出現每日執行的 `archiveRetiredEvents`（凌晨 4 點）與 `cleanupExpiredWishes`（午夜 0 點）。
+6. 確認試算表出現 `Events`、`EventsArchive`、`AuditLog`、`Members`、`Votes` 與 `VotesArchive` 六張工作表，且「觸發條件」頁面出現每日執行的 `archiveRetiredEvents`（凌晨 4 點）與 `cleanupExpiredWishes`（午夜 0 點）。
 7. 重新整理 Google Sheet，選擇「活動布告欄 → 設定 Google 日曆」，貼上日曆網址或 Calendar ID。
 8. 如需把既有未過期活動補進日曆，選擇「活動布告欄 → 同步現有未過期活動」。
 9. 選擇「部署 → 管理部署作業」。
@@ -99,7 +99,7 @@ Google Maps 分享網址會由 GAS 限定在 Google Maps 網域內解析，取�
 | `timestamp` | 伺服器紀錄時間 |
 | `actorUserId` | 操作者 LINE userId |
 | `actorName` | 操作者名稱 |
-| `actionType` | `create`、`join`、`leave`、`update`、`handoff`、`delete`、`comment`、`highlight`、`unhighlight`、`admin_remove_attendee`、`checkin`、`admin_check`、`admin_uncheck`、`admin_remove_member`、`admin_reset_checkins` |
+| `actionType` | `create`、`join`、`leave`、`update`、`handoff`、`delete`、`comment`、`highlight`、`unhighlight`、`admin_remove_attendee`、`checkin`、`admin_check`、`admin_uncheck`、`admin_remove_member`、`admin_reset_checkins`、`vote_create`、`vote_update`、`vote_cast`、`vote_close`、`vote_delete`、`vote_link` |
 | `action` | 可閱讀的操作說明 |
 | `details` | 補充 JSON 資料 |
 
@@ -129,6 +129,39 @@ Google Maps 分享網址會由 GAS 限定在 Google Maps 網域內解析，取�
 **這是全站唯一由未驗證輸入新增列的路徑**，所以 `checkIn_` 內有兩道硬限制：名單上限 `APP_CONFIG.MAX_MEMBERS`（500，對齊 LINE 群組人數上限）、`displayName` 截斷 40 字。兩者都不可移除。另外 `checkIn_` 只認 `payload.actorUserId`，不接受 payload 自帶的目標 userId，否則任何人都能替別人打卡。
 
 `Members` 表不存在時（還沒跑過新版 `setupProject()`），`doGet` 會靜靜省略 `members` 欄位而不是報錯，前端據此把打卡按鈕鎖成「打卡（需更新）」。
+
+## Votes 表格設計（投票）
+
+| 欄位 | 用途 |
+|---|---|
+| `id` | 投票唯一 ID |
+| `status` | `active` 或 `deleted` |
+| `title`、`description` | 標題（≤ 60 字）與說明（≤ 300 字，選填） |
+| `optionKind` | `text` 或 `date`，一個投票只有一種 |
+| `selectMode` | `single` 或 `multi` |
+| `options` | JSON 陣列，最多 10 個。文字：`{ id, label }`；日期：`{ id, date, time }`，`time` 空字串＝整天 |
+| `ballots` | JSON 陣列，一人一筆 `{ userId, displayName, pictureUrl, choice, votedAt }`。單選 `choice` 是選項 id；多選是 `{ 選項 id: yes / no / maybe }`。再投是覆蓋 |
+| `endsAt` | 截止時間（ISO） |
+| `closedAt` | 提前結束時間，空字串代表沒有 |
+| `linkedEventId` | 已從此投票建立的活動 id；有值即退場 |
+| `creatorName`、`creatorUser` | 發起人 |
+| `history`、`createdAt`、`updatedAt`、`deletedAt`、`deletedBy`、`deletedByUserId`、`schemaVersion` | 同 Events |
+
+「已截止」不是欄位：`closedAt` 有值，或現在已過 `endsAt`（`isVoteClosed_`）。沒有關閉用的觸發器。
+
+| action | 權限 | 行為 |
+|---|---|---|
+| `saveVote` | 建立：任何已登入成員。編輯：發起人或管理員 | 有人投過票後 `options`、`optionKind`、`selectMode` 凍結，只能改標題、說明、截止 |
+| `castVote` | 任何已登入成員，只能對自己 | 驗證 choice 對得上選項；同一人覆蓋舊票；投票人數上限 `MAX_VOTE_BALLOTS`（500） |
+| `closeVote` | 發起人或管理員 | 寫 `closedAt` |
+| `deleteVote` | 發起人或管理員 | 軟刪除 |
+| `saveEvent` + `fromVoteId` | 發起人或管理員 | 建立新活動前先 `assertVoteLinkable_`（已截止、尚未連結），活動寫完再 `linkVoteToEvent_` 記 `linkedEventId`。同一把鎖內完成 |
+
+發起人／管理員驗證用 `assertVoteManagePermission_`，不看有沒有投過票。
+
+退場與歸檔：`isRetiredVote_` 判定已刪除、已連結活動、或截止後滿 3 天（`CLOSED_VOTE_RETENTION_MS`）。`doGet` 用它過濾；`archiveRetiredEvents` 的同一班觸發器呼叫 `archiveRetiredVotes_` 搬到 `VotesArchive`，搬之前依歸檔表自己的表頭重排。
+
+`Votes` 表不存在時（還沒跑過新版 `setupProject()`），`doGet` 省略 `votes` 欄位，前端把 活動｜投票 切換鈕鎖成「投票（需更新）」並隱藏投票區。
 
 ## 同步與權限規則
 
