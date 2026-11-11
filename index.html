@@ -1188,12 +1188,13 @@
     }
     .header-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
     .header-avatar[hidden] { display: none !important; }
-    .header-me .user-name { max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-me .user-name { max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .brand-title { flex: 1 1 auto; min-width: 0; }
     .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; flex: 0 0 auto; display: inline-block; }
     .sync-dot.is-done { background: var(--line-green); }
     .sync-dot.is-wait { background: #f59e0b; }
     .sync-dot.is-error { background: #ef4444; }
-    .header-login { display: inline-block; border-color: var(--line-green); color: var(--line-green); min-height: 28px; padding: 0 10px; }
+    .header-login { display: none !important; }
     .header-login[hidden] { display: none !important; }
     .user-status-bar, .sync-clock-prompt { display: none !important; }
 
@@ -1212,6 +1213,7 @@
     }
     .nav-filters .nav-action svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .nav-filters .nav-action.active, .nav-filters .sort-toggle.active { background: #0f172a; color: #ffffff; }
+    .nav-filters .sort-toggle::after { display: none; }
 
     .event-card { border-radius: 16px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06); }
 
@@ -2495,7 +2497,7 @@
         <h1 class="brand-title">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>活動布告欄</span>
-          <time id="app-version-badge" class="version-label" datetime="2026-11-11T15:59:35+08:00">v261111.1559</time>
+          <time id="app-version-badge" class="version-label" datetime="2026-11-11T16:25:44+08:00">v261111.1625</time>
         </h1>
         <div id="header-me" class="header-me">
           <img id="header-avatar" class="header-avatar" alt="" hidden>
@@ -3156,7 +3158,7 @@
       "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec";
 
     const CONFIG = {
-      APP_VERSION: "v261111.1559", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
+      APP_VERSION: "v261111.1625", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
       LIFF_ID: SITE_SETUP.LIFF_ID || "",
       LIFF_URL: SITE_SETUP.LIFF_URL || "",
       GAS_API_URL: SITE_SETUP.GAS_API_URL || "",
@@ -5218,7 +5220,7 @@
     // 卡片左邊的日期塊：月／日／星期。固定團與投票沒有日期，放兩個字。
     function renderDateBlock(evt) {
       const ended = isEventEnded(evt);
-      if (isFixedGroup(evt)) return `<div class="date-block is-purple"><b class="is-text">固定</b><small>團</small></div>`;
+      if (isFixedGroup(evt)) return `<div class="date-block is-purple"><b class="is-text" style="font-size:13px;">固定團</b></div>`;
       const d = parseSafeDate(evt.datetime);
       if (!evt.datetime || isNaN(d.getTime())) return `<div class="date-block is-gray"><b class="is-text">待定</b></div>`;
       const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
