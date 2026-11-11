@@ -2516,7 +2516,7 @@
         <h1 class="brand-title">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>活動布告欄</span>
-          <time id="app-version-badge" class="version-label" datetime="2026-11-11T16:30:29+08:00">v261111.1630</time>
+          <time id="app-version-badge" class="version-label" datetime="2026-11-11T16:33:41+08:00">v261111.1633</time>
         </h1>
         <div id="header-me" class="header-me">
           <img id="header-avatar" class="header-avatar" alt="" hidden>
@@ -3177,7 +3177,7 @@
       "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec";
 
     const CONFIG = {
-      APP_VERSION: "v261111.1630", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
+      APP_VERSION: "v261111.1633", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
       LIFF_ID: SITE_SETUP.LIFF_ID || "",
       LIFF_URL: SITE_SETUP.LIFF_URL || "",
       GAS_API_URL: SITE_SETUP.GAS_API_URL || "",
@@ -6096,10 +6096,22 @@ ${pageUrl}`;
     }
 
     // --- 16. DETAIL MODAL, EDITING, @MENTION & DELETE ---
+    // 詳情開不起來以前是整個靜默（例外發生在 openModal 之前，畫面什麼都不會變）。
+    // 包一層，把錯誤直接顯示出來，手機上才看得到是哪一行壞掉。
     function openDetailModal(eventId) {
+      try {
+        openDetailModalInner(eventId);
+      } catch (err) {
+        console.error("openDetailModal failed:", err);
+        alert("開啟活動詳情失敗：" + (err && err.message ? err.message : String(err)) +
+          "\n\n請把這段文字截圖給管理員。版本 " + CONFIG.APP_VERSION);
+      }
+    }
+
+    function openDetailModalInner(eventId) {
       activeEventId = eventId;
       const evt = eventsData.find(e => e.id === eventId);
-      if (!evt) return;
+      if (!evt) { showToast("找不到這個活動，請重新整理"); return; }
 
       normalizeFixedGroupParticipation(evt);
       const formattedTime = getEventTimeText(evt);
@@ -7280,6 +7292,17 @@ ${pageUrl}`;
         try { history.back(); } catch (ignore) { ignoreNextPopstate = false; }
       }
     }
+
+    // LINE 內建瀏覽器沒有 console 可看；未捕捉的錯誤改成畫面上提示，方便回報。
+    window.addEventListener("error", (e) => {
+      const message = e && (e.message || (e.error && e.error.message)) || "未知錯誤";
+      showToast("程式發生錯誤：" + String(message).slice(0, 80));
+    });
+    window.addEventListener("unhandledrejection", (e) => {
+      const reason = e && e.reason;
+      const message = reason && (reason.message || String(reason)) || "未知錯誤";
+      showToast("程式發生錯誤：" + String(message).slice(0, 80));
+    });
 
     window.addEventListener("popstate", () => {
       if (ignoreNextPopstate) { ignoreNextPopstate = false; return; }
