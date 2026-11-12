@@ -106,7 +106,7 @@ const APP_CONFIG = Object.freeze({
   // 若已從投票建立活動（linkedEventId 有值）則立刻退場。
   VOTES_SHEET: "Votes",
   VOTES_ARCHIVE_SHEET: "VotesArchive",
-  MAX_VOTE_OPTIONS: 10,
+  MAX_VOTE_OPTIONS: 20,
   MAX_VOTE_OPTION_LENGTH: 40,
   MAX_VOTE_TITLE_LENGTH: 60,
   MAX_VOTE_DESCRIPTION_LENGTH: 300,

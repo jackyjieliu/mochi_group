@@ -1383,6 +1383,21 @@
     #btn-comment-event[hidden] { display: none !important; }
     .modal-footer .form-help { order: 9; }
 
+    /* 投票列（首頁）：整列可點，右邊 › 表示會開新頁 */
+    .vote-row { cursor: pointer; grid-template-columns: 48px minmax(0, 1fr) auto 16px !important; }
+    .vote-row .vote-row-chevron { width: 16px; height: 16px; color: #94a3b8; }
+    /* 投票頁：底部兩層都釘住——白色動作列在上、綠色主要鈕在下；刪除留在內容區 */
+    .vote-page-footer .vote-ghost-row { margin-top: 0; order: 0; }
+    .vote-page-footer .vote-ghost-row .line-btn { min-height: 44px !important; }
+    .vote-page-footer .vote-primary { order: 1; }
+    .vote-page-footer .vote-hint { order: 2; margin: 0; }
+    .vote-page-footer:empty { display: none !important; }
+    .vote-page-hero { display: flex; flex-direction: column; gap: 8px; padding: 2px 0 10px 0; }
+    .vote-page-hero .vote-page-title { font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.25; overflow-wrap: anywhere; }
+    .vote-page-hero .detail-line { font-size: 14px; }
+    .vote-page-delete { display: block; width: 100%; margin-top: 12px; min-height: 44px; border: 1px solid #fecaca; border-radius: 12px; background: #ffffff; color: #dc2626; font-family: var(--font-line); font-size: 14px; font-weight: 700; cursor: pointer; }
+    .vote-page-body-options .vote-options { margin-top: 0; }
+
     /* 自己設了 display 的元素，hidden 屬性會被蓋掉（作者樣式永遠贏過 UA 的 [hidden]）。
        所有用 .hidden = true 收起來的新區塊都要列在這裡，不然會像 v261111.1527 那樣永遠卡在畫面上。 */
     .nav-action[hidden],
@@ -2564,7 +2579,7 @@
         <h1 class="brand-title">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>活動布告欄</span>
-          <time id="app-version-badge" class="version-label" datetime="2026-11-11T17:44:17+08:00">v261111.1744</time>
+          <time id="app-version-badge" class="version-label" datetime="2026-11-12T13:28:03+08:00">v261112.1328</time>
         </h1>
         <div id="header-me" class="header-me">
           <img id="header-avatar" class="header-avatar" alt="" hidden>
@@ -2889,7 +2904,7 @@
             <div class="form-group">
               <div class="form-label-row">
                 <span class="form-label">選項 *</span>
-                <span id="vote-option-count" style="font-size:12px; color:#64748b;">2 / 10</span>
+                <span id="vote-option-count" style="font-size:12px; color:#64748b;">2 / 20</span>
               </div>
               <div id="vote-option-rows" class="vote-option-rows"></div>
               <button type="button" id="btn-add-vote-option" class="btn-add-vote-option" style="margin-top:8px;">+ 新增選項</button>
@@ -3113,6 +3128,18 @@
     </div>
   </div>
 
+  <!-- 投票頁：點首頁的投票列開啟（不再在卡片內展開）。內容與底部都由 renderVotePage() 依狀態產生。 -->
+  <div id="modal-vote" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="title-vote">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span id="title-vote" class="modal-title-text">投票</span>
+        <button class="modal-close" data-close="modal-vote" aria-label="關閉投票視窗">✕</button>
+      </div>
+      <div id="vote-page-body" class="modal-form-body" style="background:#ffffff;"></div>
+      <div id="vote-page-footer" class="modal-footer vote-page-footer"></div>
+    </div>
+  </div>
+
   <!-- 投票詳情：每個人的回答，與各選項名單的複製 -->
   <div id="modal-vote-detail" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="title-vote-detail">
     <div class="modal-box">
@@ -3224,7 +3251,7 @@
       "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec";
 
     const CONFIG = {
-      APP_VERSION: "v261111.1744", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
+      APP_VERSION: "v261112.1328", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
       LIFF_ID: SITE_SETUP.LIFF_ID || "",
       LIFF_URL: SITE_SETUP.LIFF_URL || "",
       GAS_API_URL: SITE_SETUP.GAS_API_URL || "",
@@ -3280,8 +3307,9 @@
     // 後端有沒有 Votes 表用 doGet 是否回傳 votes 判斷，不看 schemaVersion。
     let votesData = [];
     let votesSupported = false;
-    const expandedVoteIds = new Set();
     const processingVoteIds = new Set();
+    // 目前開著的投票頁（#modal-vote）
+    let activeVoteId = null;
     // 多選投票的暫存答案：voteId -> { optionId: yes|no|maybe }，按送出才送一次請求。
     const voteDraftChoices = new Map();
     // 已結束但同票時，建立活動前要先選一個；記住哪張卡正在選。
@@ -6410,7 +6438,7 @@ ${pageUrl}`;
     // 投票是獨立的卡片區，在篩選列之上，不受排序與分類影響。
     // 刻意不做樂觀更新（同打卡）：等伺服器確認成功才改本機 votesData，所以沒有回滾程式碼。
     const VOTE_ANSWER_LABELS = { yes: "可以", no: "不行", maybe: "再看看" };
-    const VOTE_MAX_OPTIONS = 10;
+    const VOTE_MAX_OPTIONS = 20;
 
     function normalizeVote(raw) {
       if (!raw || !raw.id) return null;
@@ -6535,12 +6563,6 @@ ${pageUrl}`;
       if (!ready && createMode === "vote") setCreateMode("event");
     }
 
-    function toggleVoteExpand(voteId) {
-      if (expandedVoteIds.has(voteId)) expandedVoteIds.delete(voteId);
-      else expandedVoteIds.add(voteId);
-      renderVotes();
-    }
-
     function renderVoterPills(ballots) {
       return `<div class="vote-voters">${ballots.map(ballot => {
         const name = escapeHtml(ballot.displayName || "未命名");
@@ -6575,22 +6597,77 @@ ${pageUrl}`;
       countEl.textContent = openCount > 0 ? `${openCount} 個進行中` : `${sorted.length} 個已結束`;
 
       listEl.innerHTML = "";
-      sorted.forEach(vote => listEl.appendChild(buildVoteCard(vote)));
+      sorted.forEach(vote => listEl.appendChild(buildVoteRow(vote)));
+      if (activeVoteId && modalStack.includes("modal-vote")) renderVotePage();
       if (voteDetailVoteId && modalStack.includes("modal-vote-detail")) renderVoteDetail();
     }
 
-    function buildVoteCard(vote) {
+    // 首頁的投票列：不展開，點了開投票頁。
+    function buildVoteRow(vote) {
+      const closed = isVoteClosed(vote);
+      const multi = vote.selectMode === "multi";
+      const { winners, voterCount } = getVoteTally(vote);
+      const leadingOption = winners.length === 1 ? (vote.options || []).find(o => o.id === winners[0]) : null;
+      const leadingText = leadingOption ? `${formatVoteOptionText(vote, leadingOption)} ${closed ? "最高票" : "領先"}` : (winners.length > 1 ? "同票" : "");
+      const voters = vote.ballots || [];
+
+      const cardEl = document.createElement("div");
+      cardEl.className = `event-card ${closed ? "ended" : ""}`;
+      cardEl.innerHTML = `
+        <div class="card-summary-bar card-row vote-row" role="button" tabindex="0" aria-label="開啟投票：${escapeHtml(vote.title)}">
+          <div class="date-block ${closed ? "is-gray" : "is-blue"}"><b class="is-text">投票</b><small>${escapeHtml(getVoteTimeLeftText(vote))}</small></div>
+          <div class="card-main">
+            <div class="card-row-title">${escapeHtml(vote.title)}</div>
+            <div class="card-row-meta">${multi ? "多選" : "單選"} · ${voterCount} 人已投${leadingText ? ` · ${escapeHtml(leadingText)}` : ""}</div>
+          </div>
+          <div class="card-side">
+            <span class="tag-badge ${closed ? "tag-ended" : "tag-vote"}">${closed ? "已結束" : "投票中"}</span>
+            ${voters.length ? renderAvatarStack(voters, voters.length > 3 ? `+${voters.length - 3}` : "") : ""}
+          </div>
+          <svg class="vote-row-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+        </div>`;
+      const row = cardEl.querySelector(".vote-row");
+      row.onclick = () => openVotePage(vote.id);
+      row.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openVotePage(vote.id); } };
+      return cardEl;
+    }
+
+    function openVotePage(voteId) {
+      const vote = votesData.find(item => item.id === voteId);
+      if (!vote) return;
+      activeVoteId = voteId;
+      voteTiePickerId = null;
+      renderVotePage();
+      const body = document.getElementById("vote-page-body");
+      if (body) body.scrollTop = 0;
+      openModal("modal-vote");
+    }
+
+    /**
+     * 投票頁。內容：標題與三行資訊、說明、選項清單（單選點即投；多選三顆 pill）、
+     * 同票選擇器、建立活動的說明框、刪除。
+     * 底部釘住兩層：白色動作列（查看回答／分享／提前結束），綠色主要鈕（多選 送出；已結束 建立活動）。
+     * 每次重畫都保留捲動位置——點 pill 不能跳回頂端。
+     */
+    function renderVotePage() {
+      const body = document.getElementById("vote-page-body");
+      const footer = document.getElementById("vote-page-footer");
+      if (!body || !footer) return;
+      const vote = votesData.find(item => item.id === activeVoteId);
+      if (!vote || vote.deleted || vote.linkedEventId) {
+        if (modalStack.includes("modal-vote")) closeModal("modal-vote");
+        return;
+      }
+      const keepScroll = body.scrollTop;
+
       const closed = isVoteClosed(vote);
       const multi = vote.selectMode === "multi";
       const { tally, winners, voterCount } = getVoteTally(vote);
       const myBallot = getMyBallot(vote);
-      const expanded = expandedVoteIds.has(vote.id);
       const busy = processingVoteIds.has(vote.id);
       const manage = canManageVote(vote);
       const draft = multi ? (voteDraftChoices.get(vote.id) || (myBallot && myBallot.choice && typeof myBallot.choice === "object" ? Object.assign({}, myBallot.choice) : {})) : null;
-
-      const cardEl = document.createElement("div");
-      cardEl.className = `event-card ${expanded ? "is-expanded" : ""} ${closed ? "ended" : ""}`;
+      const answeredCount = multi ? Object.keys(draft).length : 0;
 
       const optionsHtml = (vote.options || []).map(option => {
         const text = escapeHtml(formatVoteOptionText(vote, option));
@@ -6639,10 +6716,11 @@ ${pageUrl}`;
           </${tag}>`;
       }).join("");
 
-      // 已結束：發起人／管理員看到建立活動；同票先選一個。
+      // 已結束：建立活動的說明框（按鈕在底部）；同票先在頁內選一個。
       let nextHtml = "";
+      const tiePicking = closed && manage && voteTiePickerId === vote.id && winners.length > 1;
       if (closed && manage) {
-        if (voteTiePickerId === vote.id && winners.length > 1) {
+        if (tiePicking) {
           nextHtml = `
             <div class="vote-next-box">
               <span class="vote-next-title">有 ${winners.length} 個選項同票，請選一個：</span>
@@ -6658,63 +6736,59 @@ ${pageUrl}`;
           nextHtml = `
             <div class="vote-next-box">
               <span class="vote-next-title">投票結束，接下來？</span>
-              <span class="vote-next-text">會開啟一般活動表單，標題與日期已填好，再補地點就能發起。建立後這張投票會離開列表。</span>
-              <button type="button" class="line-btn btn-join" data-create-from-vote style="min-height:44px;">用最高票建立活動</button>
+              <span class="vote-next-text">按底下的「用最高票建立活動」會開啟一般活動表單，標題與日期已填好，再補地點就能發起。建立後這個投票會離開列表。</span>
             </div>`;
         } else {
           nextHtml = `<div class="vote-next-box"><span class="vote-next-text">沒有人投票，無法建立活動。</span></div>`;
         }
       }
 
-      // 一排邊框按鈕：查看回答／分享（結果）；發起人／管理員多一顆——進行中是 提前結束，已結束是 刪除投票。
-      // 進行中的刪除降成下面一行小字，不佔主要位置但還是找得到。
-      const actionRowHtml = `
+      const deleteHtml = manage
+        ? (closed
+          ? `<button type="button" class="vote-page-delete" data-delete-vote ${busy ? "disabled" : ""}>刪除投票</button>`
+          : `<button type="button" class="vote-delete-link" data-delete-vote ${busy ? "disabled" : ""}>刪除這個投票</button>`)
+        : "";
+      const hintHtml = !closed
+        ? `<p class="vote-hint">${busy ? "送出中..." : (multi ? "每個選項選一個答案，全部選好再按底下的 送出。" : "點選即投票，截止前可以更改。")}</p>`
+        : `<p class="vote-hint">結束 3 天後自動離開列表。</p>`;
+
+      body.innerHTML = `
+        <div class="vote-page-hero">
+          <div class="detail-tags">
+            <span class="tag-badge ${closed ? "tag-ended" : "tag-vote"}">${closed ? "已結束" : "投票中"}</span>
+            <span class="tag-badge tag-ended">${multi ? "多選" : "單選"}</span>
+          </div>
+          <div class="vote-page-title">${escapeHtml(vote.title)}</div>
+          <div class="detail-line"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>${escapeHtml(formatDateTime(vote.endsAt))} ${closed ? "已截止" : "截止"} · ${escapeHtml(getVoteTimeLeftText(vote))}</span></div>
+          <div class="detail-line"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>${voterCount} 人已投 · ${(vote.options || []).length} 個選項 · 由 ${escapeHtml(vote.creatorName || vote.creatorUser?.displayName || "—")} 發起</span></div>
+          ${vote.description ? `<div class="vote-description" style="margin-top:2px;">${escapeHtml(vote.description)}</div>` : ""}
+        </div>
+        ${nextHtml}
+        <div class="vote-page-body-options"><div class="vote-options">${optionsHtml}</div></div>
+        ${hintHtml}
+        ${deleteHtml}`;
+
+      // 底部：白色動作列 + 綠色主要鈕
+      const whiteRow = `
         <div class="vote-ghost-row">
           <button type="button" class="line-btn" data-vote-detail>查看回答</button>
           <button type="button" class="line-btn" data-share-vote>${closed ? "分享結果" : "分享"}</button>
-          ${manage ? (closed
-            ? `<button type="button" class="line-btn is-danger" data-delete-vote ${busy ? "disabled" : ""}>刪除投票</button>`
-            : `<button type="button" class="line-btn" data-close-vote ${busy ? "disabled" : ""}>提前結束</button>`) : ""}
-        </div>
-        ${manage && !closed ? `<button type="button" class="vote-delete-link" data-delete-vote ${busy ? "disabled" : ""}>刪除這個投票</button>` : ""}`;
-
-      const submitHtml = multi && !closed ? `
-        <button type="button" class="line-btn btn-join" data-submit-multi style="width:100%; min-height:44px; margin-top:10px;" ${busy ? "disabled" : ""}>${busy ? "送出中..." : "送出"}</button>
-        <p class="vote-hint">${myBallot ? `你上次送出：${escapeHtml(formatCheckinTime(myBallot.votedAt))}。截止前可以再改。` : "每個選項選一個答案，全部選好再按 送出。"}</p>` : "";
-
-      const singleHint = !multi && !closed ? `<p class="vote-hint">${busy ? "送出中..." : "點選即投票，截止前可以更改。"}</p>` : "";
-      const leadingOption = winners.length === 1 ? (vote.options || []).find(o => o.id === winners[0]) : null;
-      const leadingText = leadingOption ? `${formatVoteOptionText(vote, leadingOption)} ${closed ? "最高票" : "領先"}` : (winners.length > 1 ? "同票" : "");
-      const closedHint = closed ? `<p class="vote-hint">結束 3 天後自動離開列表。</p>` : "";
-      const endsText = formatDateTime(vote.endsAt);
-
-      cardEl.innerHTML = `
-        <div class="card-summary-bar card-row" data-toggle-vote>
-          <div class="date-block ${closed ? "is-gray" : "is-blue"}"><b class="is-text">投票</b><small>${escapeHtml(getVoteTimeLeftText(vote))}</small></div>
-          <div class="card-main">
-            <div class="card-row-title">${escapeHtml(vote.title)}</div>
-            <div class="card-row-meta">${multi ? "多選" : "單選"} · ${voterCount} 人已投${leadingText ? ` · ${escapeHtml(leadingText)}` : ""}</div>
-          </div>
-          <div class="card-side">
-            <span class="tag-badge ${closed ? "tag-ended" : "tag-vote"}">${closed ? "已結束" : "投票中"}</span>
-          </div>
-        </div>
-        <div class="card-body-collapsible">
-          <div class="card-info">
-            <div class="info-row"><span class="info-label">發起人：</span><span>${escapeHtml(vote.creatorName || vote.creatorUser?.displayName || "無")}</span></div>
-            <div class="info-row"><span class="info-label">截止：</span><span>${escapeHtml(endsText)}${closed ? "（已截止）" : ""}</span></div>
-            <div class="info-row"><span class="info-label">方式：</span><span>${multi ? "多選" : "單選"} · 已投 <b style="color:var(--line-green-dark);">${voterCount}</b> 人</span></div>
-          </div>
-          ${vote.description ? `<div class="vote-description">${escapeHtml(vote.description)}</div>` : ""}
-          <div class="vote-options">${optionsHtml}</div>
-          ${singleHint}${submitHtml}${nextHtml}${actionRowHtml}${closedHint}
+          ${manage && !closed ? `<button type="button" class="line-btn" data-close-vote ${busy ? "disabled" : ""}>提前結束</button>` : ""}
         </div>`;
+      let primary = "";
+      if (multi && !closed) {
+        primary = `<button type="button" class="line-btn btn-join vote-primary" data-submit-multi ${busy ? "disabled" : ""}>${busy ? "送出中..." : `送出${answeredCount ? `（已回答 ${answeredCount} / ${(vote.options || []).length}）` : ""}`}</button>
+          ${myBallot ? `<p class="vote-hint">你上次送出：${escapeHtml(formatCheckinTime(myBallot.votedAt))}。截止前可以再改。</p>` : ""}`;
+      } else if (closed && manage && winners.length > 0 && !tiePicking) {
+        primary = `<button type="button" class="line-btn btn-join vote-primary" data-create-from-vote>用最高票建立活動</button>`;
+      }
+      footer.innerHTML = whiteRow + primary;
 
-      cardEl.querySelector("[data-toggle-vote]").onclick = () => toggleVoteExpand(vote.id);
-      cardEl.querySelectorAll("[data-single-option]").forEach(btn => {
+      // 綁定
+      body.querySelectorAll("[data-single-option]").forEach(btn => {
         btn.onclick = () => castVote(vote.id, btn.getAttribute("data-single-option"));
       });
-      cardEl.querySelectorAll("[data-vote-answer]").forEach(btn => {
+      body.querySelectorAll("[data-vote-answer]").forEach(btn => {
         btn.onclick = () => {
           const optionId = btn.getAttribute("data-option-id");
           const answer = btn.getAttribute("data-vote-answer");
@@ -6722,26 +6796,27 @@ ${pageUrl}`;
           if (current[optionId] === answer) delete current[optionId];
           else current[optionId] = answer;
           voteDraftChoices.set(vote.id, current);
-          renderVotes();
+          renderVotePage();
         };
       });
-      const submitBtn = cardEl.querySelector("[data-submit-multi]");
-      if (submitBtn) submitBtn.onclick = () => castVote(vote.id, voteDraftChoices.get(vote.id) || draft);
-      const closeBtn = cardEl.querySelector("[data-close-vote]");
-      if (closeBtn) closeBtn.onclick = () => closeVoteEarly(vote.id);
-      cardEl.querySelectorAll("[data-delete-vote]").forEach(btn => { btn.onclick = () => deleteVote(vote.id); });
-      const shareBtn = cardEl.querySelector("[data-share-vote]");
-      if (shareBtn) shareBtn.onclick = () => shareVoteToClipboard(vote);
-      const createBtn = cardEl.querySelector("[data-create-from-vote]");
-      if (createBtn) createBtn.onclick = () => startCreateFromVote(vote.id);
-      cardEl.querySelectorAll("[data-pick-winner]").forEach(btn => {
+      body.querySelectorAll("[data-delete-vote]").forEach(btn => { btn.onclick = () => deleteVote(vote.id); });
+      body.querySelectorAll("[data-pick-winner]").forEach(btn => {
         btn.onclick = () => openCreateFromVote(vote.id, btn.getAttribute("data-pick-winner"));
       });
-      const cancelTie = cardEl.querySelector("[data-cancel-tie-picker]");
-      if (cancelTie) cancelTie.onclick = () => { voteTiePickerId = null; renderVotes(); };
-      const detailBtn = cardEl.querySelector("[data-vote-detail]");
+      const cancelTie = body.querySelector("[data-cancel-tie-picker]");
+      if (cancelTie) cancelTie.onclick = () => { voteTiePickerId = null; renderVotePage(); };
+      const submitBtn = footer.querySelector("[data-submit-multi]");
+      if (submitBtn) submitBtn.onclick = () => castVote(vote.id, voteDraftChoices.get(vote.id) || draft);
+      const closeBtn = footer.querySelector("[data-close-vote]");
+      if (closeBtn) closeBtn.onclick = () => closeVoteEarly(vote.id);
+      const shareBtn = footer.querySelector("[data-share-vote]");
+      if (shareBtn) shareBtn.onclick = () => shareVoteToClipboard(vote);
+      const createBtn = footer.querySelector("[data-create-from-vote]");
+      if (createBtn) createBtn.onclick = () => startCreateFromVote(vote.id);
+      const detailBtn = footer.querySelector("[data-vote-detail]");
       if (detailBtn) detailBtn.onclick = () => openVoteDetail(vote.id);
-      return cardEl;
+
+      body.scrollTop = keepScroll;
     }
 
     // --- 投票詳情 ---------------------------------------------------------
@@ -6986,7 +7061,7 @@ ${pageUrl}`;
       const { winners } = getVoteTally(vote);
       if (winners.length > 1) {
         voteTiePickerId = voteId;
-        renderVotes();
+        renderVotePage();
         return;
       }
       openCreateFromVote(voteId, winners[0]);
@@ -7020,6 +7095,7 @@ ${pageUrl}`;
         document.getElementById("input-desc").value = `投票結果：${option.label}`;
       }
 
+      if (modalStack.includes("modal-vote")) closeModal("modal-vote");
       createFromVoteId = voteId;
       createFromVoteOptionId = optionId;
       const hint = document.getElementById("create-from-vote-hint");
@@ -7289,7 +7365,11 @@ ${pageUrl}`;
           </div>`;
       }).join("");
       if (counter) counter.textContent = `${createVoteOptions.length} / ${VOTE_MAX_OPTIONS}`;
-      if (addBtn) addBtn.disabled = createVoteOptions.length >= VOTE_MAX_OPTIONS;
+      if (addBtn) {
+        const left = VOTE_MAX_OPTIONS - createVoteOptions.length;
+        addBtn.disabled = left <= 0;
+        addBtn.textContent = left > 0 ? `+ 新增選項（還可以加 ${left} 個）` : `已達上限 ${VOTE_MAX_OPTIONS} 個`;
+      }
       // 剛渲染出來的欄位要跟著目前模式啟用，否則切回投票時仍是 disabled。
       container.querySelectorAll("input, select").forEach(el => { el.disabled = createMode !== "vote"; });
     }
@@ -7335,12 +7415,11 @@ ${pageUrl}`;
 
       // 與活動相同：先關視窗、先顯示，失敗再整筆拿掉並提示。
       votesData.push(newVote);
-      expandedVoteIds.add(newVote.id);
       sendPostToGAS({ action: "saveVote", pictureUrl: currentUser?.pictureUrl || "", ...newVote })
         .then(result => {
           if (result.ok) return;
           votesData = votesData.filter(item => item.id !== newVote.id);
-          expandedVoteIds.delete(newVote.id);
+          if (activeVoteId === newVote.id && modalStack.includes("modal-vote")) closeModal("modal-vote");
           renderVotes();
           alert(`建立投票失敗，投票沒有建立。\n\n${result.message}`);
         });

@@ -139,7 +139,7 @@ Google Maps 分享網址會由 GAS 限定在 Google Maps 網域內解析，取�
 | `title`、`description` | 標題（≤ 60 字）與說明（≤ 300 字，選填） |
 | `optionKind` | `text` 或 `date`，一個投票只有一種 |
 | `selectMode` | `single` 或 `multi` |
-| `options` | JSON 陣列，最多 10 個。文字：`{ id, label }`；日期：`{ id, date, time }`，`time` 空字串＝整天 |
+| `options` | JSON 陣列，最多 20 個（`MAX_VOTE_OPTIONS`）。文字：`{ id, label }`；日期：`{ id, date, time }`，`time` 空字串＝整天 |
 | `ballots` | JSON 陣列，一人一筆 `{ userId, displayName, pictureUrl, choice, votedAt }`。單選 `choice` 是選項 id；多選是 `{ 選項 id: yes / no / maybe }`。再投是覆蓋 |
 | `endsAt` | 截止時間（ISO） |
 | `closedAt` | 提前結束時間，空字串代表沒有 |
