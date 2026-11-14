@@ -222,6 +222,13 @@ Google Sheet 內有六張工作表：`Events`（目前顯示中的活動）、`E
 - **分享投票** `getVoteShareText()` / `shareVoteToClipboard()`，卡片與投票詳情共用。進行中：**只列選項**，不帶票數、不帶截止、不列名字，空一行後接投票連結（使用者決定：這是邀請不是戰況）。已結束：標題改「投票結果」，列最高票與投給它的 @名字，其他選項只列票數，不附連結。
 - 本版沒有投票留言、也沒有編輯投票的 UI（GAS `saveVote` 已支援編輯，前端尚未接）。
 
+### 分享連結直達（deep link）
+
+- 活動與進行中投票的分享文字結尾是 `getShareableUrl({ type, id })`：`https://liff.line.me/<LIFF_ID>?event=ID` 或 `?vote=ID`。宣傳列表、報名複製文字與 Google 日曆連結仍用不帶 id 的首頁連結。
+- 開頁時 `readDeepLinkFromUrl()` 讀 `event`／`vote`，也會拆 `liff.state`（LINE 把原始 query 包在裡面還回來）。存進 `pendingDeepLink`，**第一次同步結束（`runInitialSync` 的 `finally`）才由 `applyPendingDeepLink()` 開一次**：找得到就 `openDetailModal` / `openVotePage`，找不到就吐司「這個活動／投票已經不在列表上」，首頁照常。等同步是為了讓剛分享的新活動也找得到。
+- 開之前先 `stripDeepLinkFromUrl()` 用 `replaceState` 清掉 `event`／`vote`／`liff.state`（保留 `?dev=true`），重新整理不會再開；LIFF init 結束後再清一次，因為 SDK 可能在同步之後才把 query 還回網址。
+- 沒有 GAS 改動；id 本來就在每個人都載的資料裡，不多洩漏任何東西。舊的不帶 id 連結照舊開首頁。
+
 ### 版面（2026-11 重新設計）
 
 - **底色** `--line-bg` 是淺灰藍 `#e9eef5`（原本的飽和藍 `#8cabd9` 已棄用），白卡與文字才好讀。

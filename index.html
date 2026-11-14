@@ -2579,7 +2579,7 @@
         <h1 class="brand-title">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>活動布告欄</span>
-          <time id="app-version-badge" class="version-label" datetime="2026-11-12T13:28:03+08:00">v261112.1328</time>
+          <time id="app-version-badge" class="version-label" datetime="2026-11-13T13:58:44+08:00">v261113.1358</time>
         </h1>
         <div id="header-me" class="header-me">
           <img id="header-avatar" class="header-avatar" alt="" hidden>
@@ -3251,7 +3251,7 @@
       "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec";
 
     const CONFIG = {
-      APP_VERSION: "v261112.1328", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
+      APP_VERSION: "v261113.1358", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
       LIFF_ID: SITE_SETUP.LIFF_ID || "",
       LIFF_URL: SITE_SETUP.LIFF_URL || "",
       GAS_API_URL: SITE_SETUP.GAS_API_URL || "",
@@ -3328,6 +3328,9 @@
     let createFromVoteOptionId = null;
     // 第一次同步是否已回來（成功或失敗）。沒本機快取時用來決定載入卡要不要顯示。
     let initialSyncDone = false;
+    // 分享連結帶的 ?event=ID／?vote=ID，第一次同步完成後開一次就清掉。
+    let pendingDeepLink = null;
+    let deepLinkApplied = false;
     // 開著的視窗堆疊，給返回鍵用：每開一個就 pushState 一筆，popstate 關最上面那個。
     const modalStack = [];
     let ignoreNextPopstate = false;
@@ -3620,10 +3623,64 @@
       return merged;
     }
 
-    function getShareableUrl() {
-      return (CONFIG.LIFF_URL && CONFIG.LIFF_URL.indexOf("liff.line.me") >= 0)
+    function getShareableUrl(target = null) {
+      const base = (CONFIG.LIFF_URL && CONFIG.LIFF_URL.indexOf("liff.line.me") >= 0)
         ? CONFIG.LIFF_URL
-        : window.location.href;
+        : window.location.origin + window.location.pathname;
+      if (!target || !target.id) return base;
+      // 活動／投票分享連結直接開那一頁：?event=ID 或 ?vote=ID。LIFF 會把 query 包進 liff.state 再還回來。
+      const key = target.type === "vote" ? "vote" : "event";
+      return `${base}${base.indexOf("?") >= 0 ? "&" : "?"}${key}=${encodeURIComponent(target.id)}`;
+    }
+
+    /** 從網址讀出分享連結要開的活動或投票。同時看 liff.state（LINE 把原始 query 包在裡面）。 */
+    function readDeepLinkFromUrl() {
+      const parse = search => {
+        const params = new URLSearchParams(search || "");
+        const eventId = String(params.get("event") || "").trim();
+        const voteId = String(params.get("vote") || "").trim();
+        if (eventId) return { type: "event", id: eventId };
+        if (voteId) return { type: "vote", id: voteId };
+        return null;
+      };
+      const direct = parse(window.location.search);
+      if (direct) return direct;
+      const liffState = new URLSearchParams(window.location.search).get("liff.state");
+      if (!liffState) return null;
+      try {
+        const decoded = decodeURIComponent(liffState);
+        const qIndex = decoded.indexOf("?");
+        return qIndex >= 0 ? parse(decoded.slice(qIndex)) : null;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    /** 清掉網址上的 event／vote／liff.state，重新整理不會再開一次。保留 ?dev=true。 */
+    function stripDeepLinkFromUrl() {
+      try {
+        const url = new URL(window.location.href);
+        ["event", "vote", "liff.state"].forEach(key => url.searchParams.delete(key));
+        history.replaceState(history.state, "", url.pathname + (url.search || "") + url.hash);
+      } catch (err) {
+        /* 舊 WebView 沒有 URL／replaceState 時略過 */
+      }
+    }
+
+    /** 第一次同步結束後呼叫一次：開活動詳情或投票頁；找不到就提示。 */
+    function applyPendingDeepLink() {
+      const link = pendingDeepLink;
+      if (!link) return;
+      pendingDeepLink = null;
+      deepLinkApplied = true;
+      stripDeepLinkFromUrl();
+      if (link.type === "vote") {
+        if (votesData.some(vote => vote.id === link.id)) openVotePage(link.id);
+        else showToast("這個投票已經不在列表上");
+        return;
+      }
+      if (eventsData.some(evt => evt.id === link.id)) openDetailModal(link.id);
+      else showToast("這個活動已經不在列表上");
     }
 
     // 標題列只剩一顆同步點；文字放進 title／aria-label，有問題時由 #sync-status-line 用字說。
@@ -3741,7 +3798,8 @@
       }
 
       updateVersionBadgeUI();
-      
+      pendingDeepLink = readDeepLinkFromUrl();
+
       loadLocalData();
       renderEvents(); // 立刻渲染本地畫面
 
@@ -3755,7 +3813,11 @@
       updateFixedGroupAvailability();
       updateCheckinAvailability();
 
-      initLIFF().finally(() => setupAutomaticUpdates());
+      initLIFF().finally(() => {
+        // LIFF init 可能在同步之後才把 liff.state 還回網址；已開過的連結再清一次。
+        if (deepLinkApplied) stripDeepLinkFromUrl();
+        setupAutomaticUpdates();
+      });
       runInitialSync();
     });
 
@@ -3792,6 +3854,7 @@
         clearTimeout(slowConnectionTimer);
         initialSyncDone = true;
         updateLoadingCard();
+        applyPendingDeepLink();
       }
     }
 
@@ -5364,7 +5427,7 @@
 ${isFixedGroup(evt) ? "本週參與" : "已報名成員"}：${memberNames}
 
 點此線上報名：
-${getShareableUrl()}`;
+${getShareableUrl({ type: "event", id: evt.id })}`;
     }
 
     function shareEventToClipboard(evt) {
@@ -6852,7 +6915,7 @@ ${pageUrl}`;
       if (!closed) {
         const lines = [`【投票：${vote.title}】`];
         options.forEach((option, index) => lines.push(`${index + 1}. ${formatVoteOptionText(vote, option)}`));
-        lines.push("", getShareableUrl());
+        lines.push("", getShareableUrl({ type: "vote", id: vote.id }));
         return lines.join("\n");
       }
 
