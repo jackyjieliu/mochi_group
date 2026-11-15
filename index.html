@@ -1469,6 +1469,14 @@
       animation: login-spin 1s linear infinite;
     }
     .loading-card b { font-size: 15px; color: #0f172a; }
+    /* 抽屜載入中（分享連結直達）：先開頁再等雲端；藏內容與底部鈕，只給轉圈。不顯示本機快取。 */
+    .sheet-loading {
+      display: none; flex-direction: column; align-items: center; gap: 12px;
+      padding: 56px 16px 72px; background: #ffffff; color: #64748b; font-size: 14px;
+    }
+    .modal-box.is-loading .sheet-loading { display: flex; flex: 1 1 auto; justify-content: center; }
+    .modal-box.is-loading { min-height: 70%; }
+    .modal-box.is-loading > .modal-form-body, .modal-box.is-loading > .modal-footer { display: none; }
     .loading-card span { font-size: 12px; color: #64748b; text-align: center; }
     @media (prefers-reduced-motion: reduce) {
       .loading-spinner, .login-card.is-connecting .login-card-icon { animation: none; }
@@ -2579,7 +2587,7 @@
         <h1 class="brand-title">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>活動布告欄</span>
-          <time id="app-version-badge" class="version-label" datetime="2026-11-13T13:58:44+08:00">v261113.1358</time>
+          <time id="app-version-badge" class="version-label" datetime="2026-11-14T12:09:19+08:00">v261114.1209</time>
         </h1>
         <div id="header-me" class="header-me">
           <img id="header-avatar" class="header-avatar" alt="" hidden>
@@ -3051,6 +3059,7 @@
         <span id="detail-title" class="modal-title-text">活動詳情</span>
         <button class="modal-close" data-close="modal-detail" aria-label="關閉活動詳情視窗">✕</button>
       </div>
+      <div class="sheet-loading" aria-live="polite"><div class="loading-spinner" role="status" aria-label="載入中"></div><span>正在載入活動…</span></div>
 
       <div class="modal-form-body" style="background:#ffffff;">
         <div class="detail-hero">
@@ -3135,6 +3144,7 @@
         <span id="title-vote" class="modal-title-text">投票</span>
         <button class="modal-close" data-close="modal-vote" aria-label="關閉投票視窗">✕</button>
       </div>
+      <div class="sheet-loading" aria-live="polite"><div class="loading-spinner" role="status" aria-label="載入中"></div><span>正在載入投票…</span></div>
       <div id="vote-page-body" class="modal-form-body" style="background:#ffffff;"></div>
       <div id="vote-page-footer" class="modal-footer vote-page-footer"></div>
     </div>
@@ -3251,7 +3261,7 @@
       "https://script.google.com/macros/s/AKfycbwIMCqBv01Oyu5idmPBTv5QNYNbu2msqw8LYjmesxwRjeKaBwSp_XVUL28PDgjg6Rlzkw/exec";
 
     const CONFIG = {
-      APP_VERSION: "v261113.1358", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
+      APP_VERSION: "v261114.1209", // 格式: vYYMMDD.HHMM (根據當下時間戳記更新)
       LIFF_ID: SITE_SETUP.LIFF_ID || "",
       LIFF_URL: SITE_SETUP.LIFF_URL || "",
       GAS_API_URL: SITE_SETUP.GAS_API_URL || "",
@@ -3667,20 +3677,41 @@
       }
     }
 
-    /** 第一次同步結束後呼叫一次：開活動詳情或投票頁；找不到就提示。 */
-    function applyPendingDeepLink() {
+    /**
+     * 分享連結直達：頁面一開始就先把對應的抽屜打開成載入狀態（不顯示本機快取），
+     * 第一次同步回來再由 finishPendingDeepLink() 填內容；找不到或連不上就關抽屜、吐司。
+     */
+    function openPendingDeepLinkShell() {
+      const link = pendingDeepLink;
+      if (!link) return;
+      deepLinkApplied = true;
+      stripDeepLinkFromUrl();
+      const modalId = link.type === "vote" ? "modal-vote" : "modal-detail";
+      const box = document.querySelector(`#${modalId} .modal-box`);
+      if (box) box.classList.add("is-loading");
+      openModal(modalId);
+    }
+
+    function finishPendingDeepLink(syncOk) {
       const link = pendingDeepLink;
       if (!link) return;
       pendingDeepLink = null;
-      deepLinkApplied = true;
-      stripDeepLinkFromUrl();
-      if (link.type === "vote") {
-        if (votesData.some(vote => vote.id === link.id)) openVotePage(link.id);
-        else showToast("這個投票已經不在列表上");
+      const modalId = link.type === "vote" ? "modal-vote" : "modal-detail";
+      const box = document.querySelector(`#${modalId} .modal-box`);
+      if (box) box.classList.remove("is-loading");
+      // 使用者在載入中就按了返回：不再重開。
+      if (!modalStack.includes(modalId)) return;
+      const found = link.type === "vote"
+        ? votesData.some(vote => vote.id === link.id)
+        : eventsData.some(evt => evt.id === link.id);
+      if (syncOk && found) {
+        if (link.type === "vote") openVotePage(link.id);
+        else openDetailModal(link.id);
         return;
       }
-      if (eventsData.some(evt => evt.id === link.id)) openDetailModal(link.id);
-      else showToast("這個活動已經不在列表上");
+      closeModal(modalId);
+      if (!syncOk) showToast("連不上雲端，請稍後再試");
+      else showToast(link.type === "vote" ? "這個投票已經不在列表上" : "這個活動已經不在列表上");
     }
 
     // 標題列只剩一顆同步點；文字放進 title／aria-label，有問題時由 #sync-status-line 用字說。
@@ -3798,7 +3829,12 @@
       }
 
       updateVersionBadgeUI();
-      pendingDeepLink = readDeepLinkFromUrl();
+      // 分享連結直達：先開抽屜（載入中），首頁在後面照常載入；內容等雲端回來才填。
+      // 只讀一次：網址開完就清掉了，重複進來不可把等待中的連結蓋成 null。
+      if (!deepLinkApplied) {
+        pendingDeepLink = readDeepLinkFromUrl();
+        openPendingDeepLinkShell();
+      }
 
       loadLocalData();
       renderEvents(); // 立刻渲染本地畫面
@@ -3828,8 +3864,10 @@
         setSyncClockPrompt("hide");
       }, 2000);
 
+      let initialSyncOk = false;
       try {
         const isSuccess = await fetchRemoteDataFromGAS();
+        initialSyncOk = isSuccess === true;
         renderEvents();
 
         if (isSuccess) {
@@ -3854,7 +3892,7 @@
         clearTimeout(slowConnectionTimer);
         initialSyncDone = true;
         updateLoadingCard();
-        applyPendingDeepLink();
+        finishPendingDeepLink(initialSyncOk);
       }
     }
 

@@ -225,8 +225,9 @@ Google Sheet 內有六張工作表：`Events`（目前顯示中的活動）、`E
 ### 分享連結直達（deep link）
 
 - 活動與進行中投票的分享文字結尾是 `getShareableUrl({ type, id })`：`https://liff.line.me/<LIFF_ID>?event=ID` 或 `?vote=ID`。宣傳列表、報名複製文字與 Google 日曆連結仍用不帶 id 的首頁連結。
-- 開頁時 `readDeepLinkFromUrl()` 讀 `event`／`vote`，也會拆 `liff.state`（LINE 把原始 query 包在裡面還回來）。存進 `pendingDeepLink`，**第一次同步結束（`runInitialSync` 的 `finally`）才由 `applyPendingDeepLink()` 開一次**：找得到就 `openDetailModal` / `openVotePage`，找不到就吐司「這個活動／投票已經不在列表上」，首頁照常。等同步是為了讓剛分享的新活動也找得到。
-- 開之前先 `stripDeepLinkFromUrl()` 用 `replaceState` 清掉 `event`／`vote`／`liff.state`（保留 `?dev=true`），重新整理不會再開；LIFF init 結束後再清一次，因為 SDK 可能在同步之後才把 query 還回網址。
+- 開頁時 `readDeepLinkFromUrl()` 讀 `event`／`vote`，也會拆 `liff.state`（LINE 把原始 query 包在裡面還回來）。存進 `pendingDeepLink`。
+- **先開頁、再等雲端**（使用者決定：第一眼看到的必須是那一頁，不是首頁）：`DOMContentLoaded` 一開始 `openPendingDeepLinkShell()` 就把 `#modal-detail`／`#modal-vote` 打開成載入狀態（`.modal-box.is-loading`：藏 `.modal-form-body` 與 `.modal-footer`，只顯示 `.sheet-loading` 轉圈）。**這一頁不顯示本機快取**，首頁在後面照常用快取畫。第一次同步結束（`runInitialSync` 的 `finally`）由 `finishPendingDeepLink(syncOk)` 收尾：同步成功且找得到 → `openDetailModal` / `openVotePage` 填內容；找不到 → 關抽屜、吐司「這個活動／投票已經不在列表上」；同步失敗 → 關抽屜、吐司「連不上雲端，請稍後再試」，不退回快取。載入中按返回關掉的，同步回來不重開（看 `modalStack`）。
+- 開之前先 `stripDeepLinkFromUrl()` 用 `replaceState` 清掉 `event`／`vote`／`liff.state`（保留 `?dev=true`），重新整理不會再開；LIFF init 結束後再清一次，因為 SDK 可能在同步之後才把 query 還回網址。網址只讀一次（`deepLinkApplied` 守著），重複進 `DOMContentLoaded` 不可把等待中的連結蓋掉。
 - 沒有 GAS 改動；id 本來就在每個人都載的資料裡，不多洩漏任何東西。舊的不帶 id 連結照舊開首頁。
 
 ### 版面（2026-11 重新設計）
